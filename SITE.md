@@ -35,6 +35,9 @@ tabs/<slug>/          one directory per tab, fully owned by that tab
 
 - **Relative paths only.** The site lives at `/wellsee/`, so `/assets/x` 404s in production.
 - Test with `python3 -m http.server` from the repo root, not `file://`.
+- Agents running in parallel share ONE scratchpad directory. Keep your scripts and screenshots
+  in your own subfolder (e.g. `<scratchpad>/<your-role>/`), use the port the orchestrator
+  assigns (or a random high port), and point helper scripts at YOUR worktree path.
 - Images: no hotlinking. Original inline SVG / CSS art preferred. Public-domain or CC0
   images only if verified, committed under `tabs/<slug>/assets/`, credited in
   `tabs/<slug>/assets/CREDITS.md`.
