@@ -500,7 +500,8 @@ export const LEGEND = {
  * length/threat (1-5) are shown on the route map; hazards & loot are
  * computed from the map automatically.
  * palette: hints for art (floor tint, fog colour).
- * reward: optional { text, heal, sanity, restock (fraction of a fresh weapon's uses added to each held weapon), toast }
+ * reward: optional { text, heal, sanity, restock (fraction of a fresh weapon's uses added to each held weapon),
+ *   gift: [weaponId, uses] (tops up, fills a free slot, or replaces your most worn-out weapon), toast }
  *   applied when you reach the exit; `text` is shown on the zone's route card.
  * flashEvery: optional override of Arthur's reload time in this zone.
  */
@@ -580,7 +581,8 @@ export const LEVELS = {
     base: "grass", ambient: 0.86, length: 4, threat: 2,
     // the slow branch: fewer tent flaps opening, and you leave it fed (see reward)
     pressure: { every: 60, max: 2, types: ["unwilling", "eli", "unwilling"] },
-    reward: { text: "Leave fed: +35 health, +25 sanity, every weapon restocked by half", heal: 35, sanity: 25, restock: 0.5, toast: "You leave the pens fed on trough-food, your weapons bound up with fence wire. It tastes of nothing. You feel stronger." },
+    reward: { text: "Leave fed: +35 health, +25 sanity, weapons restocked by half, and the feed shed's popcorn (+4 flash-bangs)", heal: 35, sanity: 25, restock: 0.5, gift: ["popcorn", 4],
+      toast: "You leave the pens fed on trough-food, your weapons bound with fence wire, a sack of popcorn from the feed shed under your arm. It tastes of nothing. You feel stronger." },
     palette: { fog: "#1c2a10", tint: "#9dff6a" },
     map: [
       "################################################################################",

@@ -514,7 +514,21 @@ export function update(game, dt) {
     if (rw) {
       if (rw.heal) api.heal(rw.heal); if (rw.sanity) api.sanity(rw.sanity);
       // restock: every weapon you carry out gains that fraction of a fresh one's uses
-      if (rw.restock) for (const w of run.inventory) if (WEAPONS[w.id]) w.uses += Math.max(1, Math.round(WEAPONS[w.id].uses * rw.restock));
+      // (capped at twice a fresh one's uses, like a top-up pickup)
+      if (rw.restock) for (const w of run.inventory) {
+        const d = WEAPONS[w.id]; if (d) w.uses = Math.min(d.uses * 2, w.uses + Math.max(1, Math.round(d.uses * rw.restock)));
+      }
+      // gift: [weaponId, uses] tops up the one you hold, fills a free slot, or replaces your most worn-out weapon
+      if (rw.gift && WEAPONS[rw.gift[0]]) {
+        const [id, n] = rw.gift, d = WEAPONS[id], held = run.inventory.find((s) => s.id === id);
+        if (held) held.uses = Math.min(d.uses * 2, held.uses + n);
+        else if (run.inventory.length < PLAYER.slots) run.inventory.push({ id, uses: n });
+        else {
+          let wi = 0, wf = 1e9;
+          run.inventory.forEach((s, i) => { const f = s.uses / (WEAPONS[s.id] ? WEAPONS[s.id].uses : 1); if (f < wf) { wf = f; wi = i; } });
+          run.inventory[wi] = { id, uses: n };
+        }
+      }
       if (rw.toast) api.toast(rw.toast);
     }
     game.events.push({ type: "exit", x: p.x, y: p.y });
