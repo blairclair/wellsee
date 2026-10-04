@@ -370,29 +370,31 @@ PROPS.spawner = function spawner(ctx, e, t) {
 
 /* ---- the finale: the front gate, its breakers, and the jack-in-the-box ---- */
 PROPS.gate = function gate(ctx, e, t) {
+  // iron, painted red and gold, taller than the tents; it swings in toward you as it opens
   const open = clamp(e.open || 0, 0, 1);
-  const W = 32, H = 46;
+  const W = 32, H = 64;
   ellipse(ctx, 0, 2, 18, 4, "rgba(0,0,0,.5)");
-  // posts
-  ctx.fillStyle = "#1c1a1e"; ctx.fillRect(-W / 2 - 2, -H - 4, 4, H + 4); ctx.fillRect(W / 2 - 2, -H - 4, 4, H + 4);
-  circle(ctx, -W / 2, -H - 5, 2.6, "#2a2630"); circle(ctx, W / 2, -H - 5, 2.6, "#2a2630");
-  // the bars swing in toward you as it opens (foreshortened)
+  ctx.fillStyle = "#3a0810"; ctx.fillRect(-W / 2 - 2.5, -H - 6, 5, H + 6); ctx.fillRect(W / 2 - 2.5, -H - 6, 5, H + 6);
+  for (const px of [-W / 2, W / 2]) { circle(ctx, px, -H - 8, 3.4, "#c9a54a"); circle(ctx, px - 0.8, -H - 9, 1, "#fff0b0"); }
   const sx = 1 - open * 0.88;
-  ctx.save(); ctx.translate(-W / 2 + 2, 0); ctx.scale(sx, 1);
-  ctx.strokeStyle = "#2a2630"; ctx.lineWidth = 2.2;
+  ctx.save(); ctx.translate(-W / 2 + 2.5, 0); ctx.scale(sx, 1);
+  ctx.strokeStyle = "#6a0e18"; ctx.lineWidth = 2.4;
   for (let i = 0; i < 5; i++) {
-    const x = 3 + i * 6.5; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, -H + 4); ctx.stroke();
-    ctx.fillStyle = "#3a3640"; ctx.beginPath(); ctx.moveTo(x - 2, -H + 4); ctx.lineTo(x, -H - 1); ctx.lineTo(x + 2, -H + 4); ctx.fill();
+    const x = 3 + i * 6.2; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, -H + 6); ctx.stroke();
+    ctx.fillStyle = "#c9a54a"; ctx.beginPath(); ctx.moveTo(x - 2.2, -H + 6); ctx.lineTo(x, -H - 1); ctx.lineTo(x + 2.2, -H + 6); ctx.fill();
   }
-  ctx.lineWidth = 2.6; ctx.beginPath(); ctx.moveTo(0, -8); ctx.lineTo(W - 4, -8); ctx.moveTo(0, -H + 10); ctx.lineTo(W - 4, -H + 10); ctx.stroke();
-  ctx.strokeStyle = "#4a4250"; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc((W - 4) / 2, -H / 2 - 1, 7, 0, TAU); ctx.stroke(); // a curl of ironwork: a smile
-  ctx.beginPath(); ctx.arc((W - 4) / 2, -H / 2 - 2, 4, 0.3, Math.PI - 0.3); ctx.stroke();
+  ctx.strokeStyle = "#c9a54a"; ctx.lineWidth = 2.2; ctx.beginPath(); ctx.moveTo(0, -9); ctx.lineTo(W - 5, -9); ctx.moveTo(0, -H + 12); ctx.lineTo(W - 5, -H + 12); ctx.stroke();
+  // ironwork in the middle: a painted face, smiling
+  ctx.strokeStyle = "#c9a54a"; ctx.lineWidth = 1.1; ctx.beginPath(); ctx.arc((W - 5) / 2, -H / 2 - 2, 8, 0, TAU); ctx.stroke();
+  ctx.strokeStyle = "#d0102a"; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc((W - 5) / 2, -H / 2 - 3, 5, 0.3, Math.PI - 0.3); ctx.stroke();
+  circle(ctx, (W - 5) / 2 - 3, -H / 2 - 5, 1, "#c9a54a"); circle(ctx, (W - 5) / 2 + 3, -H / 2 - 5, 1, "#c9a54a");
   ctx.restore();
-  if (open < 0.05) { // chain and padlock
-    ctx.strokeStyle = "#6a6070"; ctx.lineWidth = 1.2; ctx.beginPath(); for (let i = 0; i < 5; i++) ctx.ellipse(-4 + i * 2, -22 + Math.abs(i - 2) * 1.2, 1.4, 0.9, 0, 0, TAU); ctx.stroke();
-    ctx.fillStyle = "#8a7a40"; ctx.fillRect(-2.5, -20, 5, 5); circle(ctx, 0, -18, 0.8, "#1a1408");
+  if (open < 0.05) { // chain and padlock, wired to the breakers
+    ctx.strokeStyle = "#7a7080"; ctx.lineWidth = 1.2; ctx.beginPath(); for (let i = 0; i < 6; i++) ctx.ellipse(-5 + i * 2, -26 + Math.abs(i - 2.5) * 1.2, 1.4, 0.9, 0, 0, TAU); ctx.stroke();
+    ctx.fillStyle = "#8a7a40"; ctx.fillRect(-3, -24, 6, 6); circle(ctx, 0, -21.5, 0.9, "#1a1408");
+    ctx.strokeStyle = "rgba(255,207,90,.5)"; ctx.lineWidth = 0.6; ctx.beginPath(); ctx.moveTo(3, -21); ctx.quadraticCurveTo(10, -6, 18, -2); ctx.stroke();
   }
-  ctx.fillStyle = "rgba(160,60,30,.4)"; ctx.fillRect(-W / 2 - 2, -12, 4, 6); // rust
+  ctx.fillStyle = "rgba(160,60,30,.45)"; ctx.fillRect(-W / 2 - 2.5, -14, 5, 7);
 };
 
 PROPS.breaker = function breaker(ctx, e, t) {
