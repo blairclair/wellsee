@@ -73,3 +73,11 @@ Messages arrive between your tool calls, but they are queued work, not interrupt
 Finish the edit or command you're in and leave your files consistent (tests runnable,
 nothing half-written) before acting on one. A message marked **URGENT** is the only
 exception: act on it at once (e.g. stop a deploy, or don't push a known-broken build).
+
+## Fleet health check (orchestrator)
+
+`scripts/watch.sh 600 <agent-id>...` runs passive checks every 10 minutes and stays
+silent while healthy. It exits with a report when an agent's worktree hasn't changed in
+30 minutes, the deploy lock is older than 15 minutes, the latest Pages run failed, a
+live page stops returning 200, or a finished agent left a server running. Run it in
+the background and restart it with the current agent list whenever agents start or finish.
