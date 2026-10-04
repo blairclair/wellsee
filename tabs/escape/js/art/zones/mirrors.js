@@ -93,7 +93,10 @@ function lay(game) {
 }
 
 /* ================================================================ cached sprites */
-const RES = 3; // sprite resolution (px per world px)
+/* Cache resolution (px per world px). Never above the screen's own scale: a cached canvas drawn
+   smaller than 1:1 takes Chrome's slow downscale path (about 4x a plain blit), so we only ever upscale. */
+const scaleFor = (ctx) => clamp(Math.floor((Math.abs(ctx.getTransform().a) || 2) * 2) / 2, 1, 3);
+let RES = 2;
 function fitFont(g, text, w, h, weight = "900") {
   let size = h; g.font = `${weight} ${size}px ${FONT}`;
   const m = g.measureText(text).width; if (m > w) { size = Math.max(5, size * w / m); g.font = `${weight} ${size}px ${FONT}`; }
@@ -102,7 +105,7 @@ function fitFont(g, text, w, h, weight = "900") {
 /** A neon tube sign: letters only (the glow pass adds them additively). */
 function neonSprite(s) {
   const w = s.x1 - s.x0, h = s.h, pad = 10;
-  return sprite("mir-neon-" + s.key, (w + pad * 2) * RES, (h + pad * 2) * RES, (g) => {
+  return sprite("mir-neon-" + s.key + RES, (w + pad * 2) * RES, (h + pad * 2) * RES, (g) => {
     g.scale(RES, RES); g.translate(pad, pad);
     // outline tube round the board
     g.shadowColor = s.rim; g.shadowBlur = 5 * RES; g.strokeStyle = rgba(s.rim, 0.95); g.lineWidth = 1.2;
@@ -117,7 +120,7 @@ function neonSprite(s) {
   });
 }
 function letterSprite(ch, color) {
-  return sprite("mir-let-" + ch + color, 40 * RES, 40 * RES, (g) => {
+  return sprite("mir-let-" + ch + color + RES, 40 * RES, 40 * RES, (g) => {
     g.scale(RES, RES); g.textAlign = "center"; g.textBaseline = "middle"; g.font = `900 20px ${FONT}`;
     g.shadowColor = color; g.shadowBlur = 8 * RES; g.fillStyle = color; g.fillText(ch, 20, 21);
     g.shadowBlur = 2 * RES; g.strokeStyle = "#fffaf0"; g.lineWidth = 0.8; g.strokeText(ch, 20, 21);
@@ -353,8 +356,8 @@ function buildBackdrop(game, S) {
   const L = lay(game), W = L.W, H = L.H, BW = W + PX * 2;
   const mk = (w, h, s) => { const c = document.createElement("canvas"); c.width = Math.ceil(w * s); c.height = Math.ceil(h * s); return c; };
   // ---- sky: low resolution is fine (gradients, stars, the moon)
-  const sky = mk(BW, BH, 1), g = sky.getContext("2d");
-  g.setTransform(1, 0, 0, 1, PX, BH);
+  const drawSky = (g) => {
+
   const gr = g.createLinearGradient(0, -BH, 0, 0);
   gr.addColorStop(0, "#04030c"); gr.addColorStop(0.45, "#160a2e"); gr.addColorStop(0.8, "#3c0f44"); gr.addColorStop(1, "#5a1640");
   g.fillStyle = gr; g.fillRect(-PX, -BH, BW, BH);
@@ -370,10 +373,11 @@ function buildBackdrop(game, S) {
   g.fillStyle = "#12061a"; g.beginPath(); g.moveTo(-PX, 0);
   for (let x = -PX; x <= W + PX; x += 40) g.lineTo(x, -34 - 14 * Math.sin(x * 0.004) - 8 * Math.sin(x * 0.013));
   g.lineTo(W + PX, 0); g.fill();
+  };
 
   // ---- front: tents, a helter-skelter, the coaster, booths, string lights, a fence (sharp)
-  const front = mk(BW, BH, S), f = front.getContext("2d");
-  f.setTransform(S, 0, 0, S, PX * S, BH * S);
+  const drawFront = (f) => {
+
   // coaster lattice, far right and far left
   const coaster = (x0, x1, base) => {
     f.strokeStyle = "#3a1630"; f.lineWidth = 1;
@@ -439,10 +443,11 @@ function buildBackdrop(game, S) {
   f.fillStyle = ground; f.fillRect(-PX, -10, BW, 10);
   f.fillStyle = "#0c060c"; for (let x = -PX; x < W + PX; x += 7) { f.fillRect(x, -9, 2.5, 9); f.beginPath(); f.moveTo(x - 0.5, -9); f.lineTo(x + 1.25, -12); f.lineTo(x + 3, -9); f.fill(); }
   f.fillRect(-PX, -6, BW, 1.2);
+  };
 
   // ---- sides: a corridor of tall funhouse mirrors in gold frames, beyond the tent
-  const side = mk(PX, H, S), sd = side.getContext("2d");
-  sd.setTransform(S, 0, 0, S, 0, 0);
+  const drawSide = (sd) => {
+
   sd.fillStyle = "#0e0614"; sd.fillRect(0, 0, PX, H);
   for (let y = 6, i = 0; y < H - 40; y += 74, i++) {
     sd.fillStyle = "#c9a54a"; sd.fillRect(10, y, PX - 20, 66);
@@ -453,6 +458,7 @@ function buildBackdrop(game, S) {
     for (let j = 0; j < 7; j++) circle(sd, 11.5, y + 4 + j * 9.5, 1.3, NEON[(i + j) % NEON.length]), circle(sd, PX - 11.5, y + 4 + j * 9.5, 1.3, NEON[(i + j + 3) % NEON.length]);
   }
 
+  };
   // ---- the face in the reflection (only below the map, in the glass)
   const ghost = mk(220, 150, S), gh = ghost.getContext("2d");
   gh.setTransform(S, 0, 0, S, 0, 0);
@@ -464,20 +470,37 @@ function buildBackdrop(game, S) {
   for (let i = 0; i < 26; i++) { const k = (i + 0.5) / 26, x = 36 + k * 148, y = 92 + Math.sin(k * Math.PI) * 18; gh.beginPath(); gh.moveTo(x - 2.4, y); gh.lineTo(x + 2.4, y); gh.lineTo(x, y + 6); gh.fill(); }
 
   // ---- cracks across the glass below the map
-  const crack = mk(BW, BH, 1), ck = crack.getContext("2d");
-  ck.setTransform(1, 0, 0, 1, PX, 0);
+  const drawCrack = (ck) => {
+
   ck.strokeStyle = "rgba(220,250,255,.55)"; ck.lineWidth = 0.7;
   for (let c = 0; c < 7; c++) {
     const ox = hash(c, 11) * W, oy = 20 + hash(c, 12) * (BH - 40);
     ck.beginPath(); for (let i = 0; i < 8; i++) { const a = i * 0.8 + hash(c, i) * 0.6, l = 20 + hash(c, i, 3) * 50; ck.moveTo(ox, oy); const mx2 = ox + Math.cos(a) * l * 0.5, my2 = oy + Math.sin(a) * l * 0.5; ck.lineTo(mx2, my2); ck.lineTo(ox + Math.cos(a + 0.2) * l, oy + Math.sin(a + 0.2) * l); } ck.stroke();
   }
   ck.fillStyle = "rgba(122,240,255,.08)"; ck.fillRect(-PX, 0, BW, BH);
-  return { S, sky, front, side, ghost, crack, game };
+  };
+  // ---- bake every layer into chunks no wider/taller than CH device px (a canvas bigger than the GPU
+  // limit falls back to software and is re-uploaded on every draw), and bake the reflections pre-flipped
+  // (drawing a big image through a negative scale is a slow path too).
+  // memory matters more than sharpness here: the carnival is a backdrop (<= 2x), the reflection is soft glass (1x)
+  const S2 = Math.min(S, 2), S1 = 1;
+  const flip = (fn) => (c) => { c.save(); c.translate(0, H); c.scale(1, -1); fn(c); c.restore(); };
+  return {
+    S, game,
+    skyT: chunked(-PX, -BH, BW, BH, S2, drawSky),
+    frontT: chunked(-PX, -BH, BW, BH, S2, drawFront),
+    farR: chunked(-PX, H, BW, BH, S1, flip((c) => { drawSky(c); c.globalAlpha = 0.85; c.drawImage(ghost, W * 0.4, -BH + 4, 220, 150); c.globalAlpha = 1; })),
+    nearR: chunked(-PX, H, BW, BH, S1, (c) => { flip(drawFront)(c); c.save(); c.translate(0, H); drawCrack(c); c.restore(); }),
+    sideL: chunked(-PX, 0, PX, H, S2, (c) => { c.translate(-PX, 0); drawSide(c); }),
+    sideR: chunked(W, 0, PX, H, S2, (c) => { c.translate(W + PX, 0); c.scale(-1, 1); drawSide(c); }),
+  };
+
 }
 function bg(game, ctx) {
-  const a = Math.abs(ctx.getTransform().a) || 2;
-  const S = clamp(Math.round(a * 2) / 2, 1.5, 3);
-  if (!BG || BG.game !== game || Math.abs(BG.S - S) > 0.6) BG = buildBackdrop(game, S);
+  const S = Math.min(2, scaleFor(ctx));
+  // rebuild when we'd have to shrink the cache (slow) or it's become clearly blurry; the close-range
+  // push-in only ever zooms in, so it never thrashes this
+  if (!BG || BG.game !== game || S < BG.S || S > BG.S + 0.75) BG = buildBackdrop(game, S);
   return BG;
 }
 /* blit the part of a cached layer (world origin ox,oy, scale s) that falls inside box */
@@ -487,8 +510,21 @@ function blit(ctx, cv, s, ox, oy, box) {
   if (x1 <= x0 || y1 <= y0) return;
   ctx.drawImage(cv, (x0 - ox) * s, (y0 - oy) * s, (x1 - x0) * s, (y1 - y0) * s, x0, y0, x1 - x0, y1 - y0);
 }
+const CH = 2048; // max chunk side in device px
+/* a world rect [x0,x0+w]x[y0,y0+h] cached at scale s, split into GPU-sized chunks; draw(g) paints in world coords */
+function chunked(x0, y0, w, h, s, draw) {
+  const out = [], step = Math.floor(CH / s);
+  for (let cx = x0; cx < x0 + w; cx += step) for (let cy = y0; cy < y0 + h; cy += step) {
+    const ww = Math.min(step, x0 + w - cx), hh = Math.min(step, y0 + h - cy);
+    const c = document.createElement("canvas"); c.width = Math.ceil(ww * s); c.height = Math.ceil(hh * s);
+    const g = c.getContext("2d"); g.setTransform(s, 0, 0, s, -cx * s, -cy * s); draw(g);
+    out.push({ c, x: cx, y: cy, s });
+  }
+  return out;
+}
+function blitC(ctx, chunks, box) { for (const k of chunks) blit(ctx, k.c, k.s, k.x, k.y, box); }
 function wheelSprite(r, k) {
-  return sprite("mir-wheel" + r + "-" + k, (r * 2 + 8) * RES, (r * 2 + 8) * RES, (g, w) => {
+  return sprite("mir-wheel" + r + "-" + k + "@" + RES, (r * 2 + 8) * RES, (r * 2 + 8) * RES, (g, w) => {
     g.scale(RES, RES); const c = r + 4; g.translate(c, c);
     g.strokeStyle = "#5a2a50"; g.lineWidth = 1.6; g.beginPath(); g.arc(0, 0, r, 0, TAU); g.stroke(); g.beginPath(); g.arc(0, 0, r * 0.82, 0, TAU); g.stroke();
     g.lineWidth = 0.8; g.beginPath(); for (let i = 0; i < 16; i++) { const a = i * TAU / 16; g.moveTo(0, 0); g.lineTo(Math.cos(a) * r, Math.sin(a) * r); } g.stroke();
@@ -497,37 +533,44 @@ function wheelSprite(r, k) {
     circle(g, 0, 0, 5, "#ffd23f"); grinFace(g, 0, 0, 4.2, "#f8efe2", 7);
   });
 }
+/* the same wheel, upside down, for the reflection (baked once: no negative-scale draws per frame) */
+function wheelSpriteF(r, k) {
+  const src = wheelSprite(r, k);
+  return sprite("mir-wheelF" + r + "-" + k + "@" + RES, src.width, src.height, (g) => { g.translate(0, src.height); g.scale(1, -1); g.drawImage(src, 0, 0); });
+}
 const WHEELS = (W) => [{ x: W * 0.23, y: -82, r: 62, k: 0, dir: 1, sp: 0.11 }, { x: W * 0.64, y: -70, r: 48, k: 2, dir: -1, sp: 0.15 }];
-function drawWheels(ctx, game, t, box, reduced) {
-  const W = game.w * T, tt = reduced ? 0 : t;
+/* Animated skyline. Coordinates are "top band" (y < 0); with fy = H the scene is drawn reflected
+   below the map (y -> H - y), mirrored by hand rather than through a flipped transform. */
+function drawWheels(ctx, game, t, box, reduced, fy = 0) {
+  const W = game.w * T, tt = reduced ? 0 : t, sy = fy ? -1 : 1, Y = (y) => (fy ? fy - y : y);
   for (const wh of WHEELS(W)) {
-    if (wh.x + wh.r + 10 < box.x0 || wh.x - wh.r - 10 > box.x1 || wh.y + wh.r + 70 < box.y0 || wh.y - wh.r - 10 > box.y1) continue;
-    // legs
-    ctx.strokeStyle = "#2a1424"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(wh.x, wh.y); ctx.lineTo(wh.x - wh.r * 0.6, 0); ctx.moveTo(wh.x, wh.y); ctx.lineTo(wh.x + wh.r * 0.6, 0); ctx.stroke();
-    const a = tt * wh.sp * wh.dir, spr = wheelSprite(wh.r, wh.k), sz = wh.r * 2 + 8;
-    ctx.save(); ctx.translate(wh.x, wh.y); ctx.rotate(a); ctx.drawImage(spr, -sz / 2, -sz / 2, sz, sz); ctx.restore();
+    const cy = Y(wh.y), lo = Math.min(cy, Y(0)) - wh.r - 12, hi = Math.max(cy, Y(0)) + wh.r + 12;
+    if (wh.x + wh.r + 10 < box.x0 || wh.x - wh.r - 10 > box.x1 || hi < box.y0 || lo > box.y1) continue;
+    ctx.strokeStyle = "#2a1424"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(wh.x, cy); ctx.lineTo(wh.x - wh.r * 0.6, Y(0)); ctx.moveTo(wh.x, cy); ctx.lineTo(wh.x + wh.r * 0.6, Y(0)); ctx.stroke(); // legs
+    const a = tt * wh.sp * wh.dir, spr = fy ? wheelSpriteF(wh.r, wh.k) : wheelSprite(wh.r, wh.k), sz = wh.r * 2 + 8;
+    ctx.save(); ctx.translate(wh.x, cy); ctx.rotate(a * sy); ctx.drawImage(spr, -sz / 2, -sz / 2, sz, sz); ctx.restore();
     for (let i = 0; i < 8; i++) { // gondolas hang straight down; one is swinging when the rest are not
-      const ga = a + i * TAU / 8, gx = wh.x + Math.cos(ga) * wh.r, gy = wh.y + Math.sin(ga) * wh.r;
+      const ga = a + i * TAU / 8, gx = wh.x + Math.cos(ga) * wh.r, gy = Y(wh.y + Math.sin(ga) * wh.r);
       const sw = i === 3 && !reduced ? Math.sin(t * 2.1) * 0.5 : 0;
-      ctx.save(); ctx.translate(gx, gy); ctx.rotate(sw);
-      ctx.fillStyle = NEON[(i + wh.k) % NEON.length]; ctx.beginPath(); ctx.moveTo(-5, 3); ctx.lineTo(5, 3); ctx.lineTo(4, 10); ctx.lineTo(-4, 10); ctx.fill();
-      ctx.fillStyle = "#fff4e0"; ctx.fillRect(-5.5, 2, 11, 1.5);
-      if (i % 3 === 1) { circle(ctx, -1.5, 1, 1.6, "#1a0a20"); circle(ctx, 1.8, 0.6, 1.6, "#1a0a20"); } // riders, still in their seats
+      ctx.save(); ctx.translate(gx, gy); ctx.rotate(sw * sy);
+      ctx.fillStyle = NEON[(i + wh.k) % NEON.length]; ctx.beginPath(); ctx.moveTo(-5, 3 * sy); ctx.lineTo(5, 3 * sy); ctx.lineTo(4, 10 * sy); ctx.lineTo(-4, 10 * sy); ctx.fill();
+      ctx.fillStyle = "#fff4e0"; ctx.fillRect(-5.5, fy ? -3.5 : 2, 11, 1.5);
+      if (i % 3 === 1) { circle(ctx, -1.5, 1 * sy, 1.6, "#1a0a20"); circle(ctx, 1.8, 0.6 * sy, 1.6, "#1a0a20"); } // riders, still in their seats
       ctx.restore();
     }
   }
 }
-function drawSkyLife(ctx, game, t, box, reduced) {
-  const W = game.w * T;
+function drawSkyLife(ctx, game, t, box, reduced, fy = 0) {
+  const W = game.w * T, sy = fy ? -1 : 1, Y = (y) => (fy ? fy - y : y);
   // searchlights sweeping slowly from behind the hill
   ctx.save(); ctx.globalCompositeOperation = "lighter";
   for (let i = 0; i < 3; i++) {
     const x = W * (0.15 + i * 0.35), a = -Math.PI / 2 + (reduced ? (i - 1) * 0.3 : Math.sin(t * 0.25 + i * 2) * 0.55);
     if (x < box.x0 - 200 || x > box.x1 + 200) continue;
-    const gr = ctx.createLinearGradient(x, -20, x + Math.cos(a) * 200, -20 + Math.sin(a) * 200);
+    const gr = ctx.createLinearGradient(x, Y(-20), x + Math.cos(a) * 200, Y(-20 + Math.sin(a) * 200));
     gr.addColorStop(0, rgba(i === 1 ? "#ff7ad9" : "#9fe8ff", 0.16)); gr.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = gr; ctx.beginPath(); ctx.moveTo(x, -20);
-    ctx.lineTo(x + Math.cos(a - 0.08) * 220, -20 + Math.sin(a - 0.08) * 220); ctx.lineTo(x + Math.cos(a + 0.08) * 220, -20 + Math.sin(a + 0.08) * 220); ctx.fill();
+    ctx.fillStyle = gr; ctx.beginPath(); ctx.moveTo(x, Y(-20));
+    ctx.lineTo(x + Math.cos(a - 0.08) * 220, Y(-20 + Math.sin(a - 0.08) * 220)); ctx.lineTo(x + Math.cos(a + 0.08) * 220, Y(-20 + Math.sin(a + 0.08) * 220)); ctx.fill();
   }
   ctx.restore();
   // loose balloons drifting up and to the LEFT (the pennants blow right)
@@ -535,21 +578,18 @@ function drawSkyLife(ctx, game, t, box, reduced) {
     const sp = 7 + hash(i, 41) * 6, life = BH + 40;
     const k = reduced ? hash(i, 44) : ((t * sp / life + hash(i, 44)) % 1);
     const x = ((hash(i, 42) * (W + 400) - (reduced ? 0 : t * (5 + hash(i, 43) * 6))) % (W + 400) + (W + 400)) % (W + 400) - 200;
-    const y = -10 - k * life + Math.sin(t * 0.7 + i) * (reduced ? 0 : 3);
-    if (x < box.x0 - 10 || x > box.x1 + 10 || y < box.y0 - 10 || y > box.y1 + 20) continue;
+    const y0 = -10 - k * life + Math.sin(t * 0.7 + i) * (reduced ? 0 : 3), y = Y(y0);
+    if (x < box.x0 - 10 || x > box.x1 + 10 || y < box.y0 - 20 || y > box.y1 + 20) continue;
     const c = NEON[i % NEON.length];
-    ctx.strokeStyle = "rgba(240,230,220,.5)"; ctx.lineWidth = 0.5; ctx.beginPath(); ctx.moveTo(x, y + 6); ctx.quadraticCurveTo(x - 3, y + 12, x + 1, y + 18); ctx.stroke();
-    ellipse(ctx, x, y, 4.4, 5.6, c); circle(ctx, x - 1.5, y - 2, 1.2, "rgba(255,255,255,.75)");
-    if (i % 5 === 0) { circle(ctx, x - 1.4, y - 0.5, 0.7, "#1a0a20"); circle(ctx, x + 1.4, y - 0.5, 0.7, "#1a0a20"); ctx.strokeStyle = "#1a0a20"; ctx.lineWidth = 0.6; ctx.beginPath(); ctx.arc(x, y + 1, 2, 0.2, Math.PI - 0.2); ctx.stroke(); } // a smiley one
+    ctx.strokeStyle = "rgba(240,230,220,.5)"; ctx.lineWidth = 0.5; ctx.beginPath(); ctx.moveTo(x, Y(y0 + 6)); ctx.quadraticCurveTo(x - 3, Y(y0 + 12), x + 1, Y(y0 + 18)); ctx.stroke();
+    ellipse(ctx, x, y, 4.4, 5.6, c); circle(ctx, x - 1.5, y - 2 * sy, 1.2, "rgba(255,255,255,.75)");
+    if (i % 5 === 0) { // a smiley one
+      circle(ctx, x - 1.4, y - 0.5 * sy, 0.7, "#1a0a20"); circle(ctx, x + 1.4, y - 0.5 * sy, 0.7, "#1a0a20");
+      ctx.strokeStyle = "#1a0a20"; ctx.lineWidth = 0.6; ctx.beginPath();
+      if (fy) ctx.arc(x, y - 1, 2, Math.PI + 0.2, TAU - 0.2); else ctx.arc(x, y + 1, 2, 0.2, Math.PI - 0.2);
+      ctx.stroke();
+    }
   }
-}
-/* the carnival above the map, in "top" coordinates (y < 0) */
-function drawBand(ctx, game, t, box, B, reduced) {
-  const L = lay(game);
-  blit(ctx, B.sky, 1, -PX, -BH, box);
-  drawSkyLife(ctx, game, t, box, reduced);
-  drawWheels(ctx, game, t, box, reduced);
-  blit(ctx, B.front, B.S, -PX, -BH, box);
 }
 /* Each region is drawn under its own axis-aligned rect clip (cheap), never one big path clip.
    m: margin kept clear above the top wall (tall heads reach up there when this runs over the figures). */
@@ -558,19 +598,14 @@ function region(ctx, r, fn) {
   ctx.save(); ctx.beginPath(); ctx.rect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0); ctx.clip(); fn(r); ctx.restore();
 }
 function drawBackdrop(ctx, game, t, view, box, m) {
-  const B = bg(game, ctx), L = lay(game), W = L.W, H = L.H, reduced = reducedOf(view), a0 = ctx.globalAlpha;
-  region(ctx, { x0: box.x0, x1: box.x1, y0: Math.max(box.y0, -BH), y1: Math.min(box.y1, -m) }, (r) => drawBand(ctx, game, t, r, B, reduced));
+  const B = bg(game, ctx), L = lay(game), W = L.W, H = L.H, reduced = reducedOf(view);
+  // the carnival above the map
+  region(ctx, { x0: box.x0, x1: box.x1, y0: Math.max(box.y0, -BH), y1: Math.min(box.y1, -m) }, (r) => {
+    blitC(ctx, B.skyT, r); drawSkyLife(ctx, game, t, r, reduced); drawWheels(ctx, game, t, r, reduced); blitC(ctx, B.frontT, r);
+  });
+  // below: the same carnival, reflected in floor-length cracked glass; something big is standing in it
   region(ctx, { x0: box.x0, x1: box.x1, y0: Math.max(box.y0, H), y1: Math.min(box.y1, H + BH) }, (r) => {
-    // the same carnival, reflected in floor-length glass; something big is standing in it
-    ctx.save(); ctx.translate(0, H); ctx.scale(1, -1);
-    const fb = { x0: r.x0, x1: r.x1, y0: -(r.y1 - H), y1: -(r.y0 - H) };
-    blit(ctx, B.sky, 1, -PX, -BH, fb);
-    const gx = W * 0.4, gw = 220, gy = -BH + 4;
-    if (gx + gw > fb.x0 && gx < fb.x1) { ctx.globalAlpha = a0 * 0.85; ctx.drawImage(B.ghost, gx, gy, gw, 150); ctx.globalAlpha = a0; }
-    drawSkyLife(ctx, game, t, fb, reduced); drawWheels(ctx, game, t, fb, reduced);
-    blit(ctx, B.front, B.S, -PX, -BH, fb);
-    ctx.restore();
-    blit(ctx, B.crack, 1, -PX, H, r);
+    blitC(ctx, B.farR, r); drawSkyLife(ctx, game, t, r, reduced, H); drawWheels(ctx, game, t, r, reduced, H); blitC(ctx, B.nearR, r);
     // the eyes in the reflected face: only they move, and they follow you
     const p = game.player, ex = W * 0.4 + 110, ey = H + BH - 4 - 58;
     if (r.x1 > ex - 60 && r.x0 < ex + 60 && r.y1 > ey - 20) for (const s of [-30, 30]) {
@@ -578,15 +613,14 @@ function drawBackdrop(ctx, game, t, view, box, m) {
       circle(ctx, ex + s + dx / d * 5, ey + dy / d * 7, 3.4, "#fff3b0");
     }
   });
-  if (box.x0 < 0) blit(ctx, B.side, B.S, -PX, 0, { x0: box.x0, x1: Math.min(box.x1, 0), y0: box.y0, y1: box.y1 });
-  if (box.x1 > W) { ctx.save(); ctx.translate(2 * W, 0); ctx.scale(-1, 1); blit(ctx, B.side, B.S, -PX, 0, { x0: 2 * W - box.x1, x1: Math.min(2 * W - box.x0, W), y0: box.y0, y1: box.y1 }); ctx.restore(); }
-  ctx.globalAlpha = a0;
+  if (box.x0 < 0) blitC(ctx, B.sideL, { x0: box.x0, x1: Math.min(box.x1, 0), y0: box.y0, y1: box.y1 });
+  if (box.x1 > W) blitC(ctx, B.sideR, { x0: Math.max(box.x0, W), x1: box.x1, y0: box.y0, y1: box.y1 });
 }
 /* Under the map only the thin strip by the top wall is ever seen (the glow pass draws the rest above the darkness). */
 function backdrop(ctx, game, t, view, box) {
   if (box.y0 >= 0) return;
   const B = bg(game, ctx), r = { x0: box.x0, x1: box.x1, y0: Math.max(box.y0, -16), y1: 0 };
-  blit(ctx, B.sky, 1, -PX, -BH, r); blit(ctx, B.front, B.S, -PX, -BH, r);
+  blitC(ctx, B.skyT, r); blitC(ctx, B.frontT, r);
 }
 
 /* ================================================================ ambient */
@@ -633,6 +667,7 @@ function ambient(ctx, game, t, view, box) {
 
 /* ================================================================ glow */
 function glow(ctx, game, t, view, box) {
+  RES = scaleFor(ctx);
   const L = lay(game), reduced = reducedOf(view), W = L.W, H = L.H;
   ctx.save();
   // 1) the world beyond the tent, drawn again above the darkness (it is not in the lightmap)
