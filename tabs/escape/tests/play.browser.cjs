@@ -70,16 +70,35 @@ const BASE = process.argv[2] || "http://localhost:8743/tabs/escape/";
     await page.waitForTimeout(3500);
     await page.screenshot({ path: OUT + vp.name + "-9lost-b.png" });
     console.log(vp.name, "lost state:", await page.evaluate(() => window.__escape.state));
-    // retry and jump to final level win
+    // retry, then walk the route zone by zone (teleporting to each exit, taking the LAST choice
+    // of each tier so the new zones get visited) until the finale
     await page.click(".js-retry"); await page.waitForTimeout(1400);
-    await page.evaluate(() => { window.__escape.run.tier = 3; });
-    await page.evaluate(() => { document.querySelector(".choice") && 0; });
-    // re-render route for tier 3 by finishing via internals: enter bigtop directly
-    await page.click(".choice"); await page.waitForTimeout(3600);
-    await page.screenshot({ path: OUT + vp.name + "-10zone.png" });
-    await page.evaluate(() => { const S = window.__escape; S.game.level = Object.assign({}, S.game.level, { final: true }); const g = S.game; g.player.x = g.exits[0].x; g.player.y = g.exits[0].y; });
+    for (let z = 0; z < 8; z++) {
+      const cs = await page.$$(".choice"); if (!cs.length) break;
+      await cs[cs.length - 1].click(); await page.waitForTimeout(3600);
+      const lv = await page.evaluate(() => { const g = window.__escape.game; g.run.health = 1e6; return g.levelId; });
+      await page.screenshot({ path: OUT + vp.name + "-10zone-" + lv + ".png" });
+      if (await page.evaluate(() => !!window.__escape.game.level.final)) break;
+      await page.evaluate(() => { const g = window.__escape.game; g.player.x = g.exits[0].x; g.player.y = g.exits[0].y; });
+      await page.waitForTimeout(1600);
+    }
+    // finale: the gate is shut until every breaker is thrown (stand on each one)
+    console.log(vp.name, "finale:", await page.evaluate(() => { const f = window.__escape.game.finale; return f && { thrown: f.thrown, total: f.total, open: f.open, barker: !!f.barker }; }));
+    const nb = await page.evaluate(() => window.__escape.game.entities.filter((e) => e.type === "breaker").length);
+    for (let i = 0; i < nb; i++) {
+      for (let k = 0; k < 14; k++) {
+        await page.evaluate((i) => { const g = window.__escape.game, b = g.entities.filter((e) => e.type === "breaker")[i];
+          g.player.x = b.x; g.player.y = b.y; g.player.invuln = 0; g.run.health = 1e6;
+          for (const e of g.entities) if (e.cat === "enemy") e.stun = Math.max(e.stun, 1); }, i);
+        await page.waitForTimeout(200);
+      }
+      if (i === 0) await page.screenshot({ path: OUT + vp.name + "-11finale.png" });
+    }
+    console.log(vp.name, "finale after breakers:", await page.evaluate(() => { const f = window.__escape.game.finale; return f && { thrown: f.thrown, open: f.open }; }));
+    await page.screenshot({ path: OUT + vp.name + "-12gate-open.png" });
+    await page.evaluate(() => { const g = window.__escape.game; g.player.x = g.exits[0].x; g.player.y = g.exits[0].y; });
     await page.waitForTimeout(6000);
-    await page.screenshot({ path: OUT + vp.name + "-11won.png" });
+    await page.screenshot({ path: OUT + vp.name + "-13won.png" });
     console.log(vp.name, "final state:", await page.evaluate(() => window.__escape.state));
     console.log(vp.name, "errors:", errs.length ? errs : "none");
     await ctx.close();

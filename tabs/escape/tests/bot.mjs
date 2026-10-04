@@ -34,11 +34,18 @@ function goal(g, bot) {
   }
   if (bot.loot) {
     const p = g.player;
-    const picks = g.entities.filter((e) => e.cat === "pickup" && !e.noPick);
-    if (picks.length) {
+    const reach = bot.loot === true ? 1e9 : bot.loot * TILE; // loot: true = everything, or a number = only pickups within that many tiles
+    const inv = g.run.inventory;
+    // weapons only when there's a free slot or it tops up one we hold (otherwise the bot swap-loops)
+    const wanted = (e) => e.item || inv.length < PLAYER.slots || inv.some((s) => s.id === e.weapon);
+    // commit to one target until it's gone (nearest-by-distance flips around fences otherwise)
+    let t = bot.target && !bot.target.dead && wanted(bot.target) ? bot.target : null;
+    if (!t) {
+      const picks = g.entities.filter((e) => e.cat === "pickup" && !e.noPick && wanted(e) && Math.hypot(e.x - p.x, e.y - p.y) < reach);
       picks.sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y));
-      return { key: "pick" + picks[0].id, tiles: [tileIdx(g, picks[0].x, picks[0].y)] };
+      t = bot.target = picks[0] || null;
     }
+    if (t) return { key: "pick" + t.id, tiles: [tileIdx(g, t.x, t.y)] };
   }
   return { key: "exit" + (g.blocked ? g.blocked.size : 0), tiles: g.exits.map((e) => tileIdx(g, e.x, e.y)) };
 }
@@ -85,7 +92,10 @@ export function botTick(g, bot) {
       if (mi >= 0) g.run.sel = mi;
     }
   }
-  if (nd < near.r + p.r + 26 && near.stun <= 0 && p.dashCd <= 0) {
+  const close = nd < near.r + p.r + 26 && near.stun <= 0;
+  bot.closeT = close ? (bot.closeT || 0) + 1 / 60 : 0; if (!close) bot.decided = false;
+  // human-ish: react after `react` s, and only dash for `skill` of the threats
+  if (close && p.dashCd <= 0 && bot.closeT >= (bot.react || 0) && !bot.decided && (bot.decided = true) && Math.random() < (bot.skill ?? 1)) {
     // dash away, perpendicular-ish to the threat, toward the goal when possible
     const a = Math.atan2(p.y - near.y, p.x - near.x);
     input.virt.x = Math.cos(a) * 0.7 + (m > 0.5 ? cx / m : 0) * 0.5;
@@ -95,9 +105,9 @@ export function botTick(g, bot) {
 }
 
 /** Play one zone. Returns { outcome, by, time, dmg, sanity, repelled }. */
-export function playZone(run, levelId, { loot = false, fight = true, maxT = 300, onTick } = {}) {
+export function playZone(run, levelId, { loot = false, fight = true, maxT = 300, onTick, skill = 1, react = 0 } = {}) {
   const g = loadLevel(run, levelId);
-  const bot = { loot, fight, cache: {} };
+  const bot = { loot, fight, cache: {}, skill, react };
   const h0 = run.health; let t = 0;
   input.clear();
   for (; t < maxT && !g.outcome; t += 1 / 60) {
@@ -117,8 +127,9 @@ export function playRoute(route, opts = {}) {
   for (const id of route) {
     if (run.path.length) { run.health = Math.min(PLAYER.maxHealth, run.health + 15); run.sanity = Math.min(PLAYER.maxSanity, run.sanity + 20); }
     run.path.push(id);
+    const wepIn = run.inventory.reduce((a, s) => a + s.uses, 0);
     const r = playZone(run, id, opts);
-    zones.push({ id, ...r, game: undefined });
+    zones.push({ id, ...r, hpIn: run.health + r.dmg, wepIn, game: undefined });
     if (r.outcome !== "exit") return { won: false, zones, run };
   }
   return { won: true, zones, run };

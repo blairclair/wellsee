@@ -132,7 +132,7 @@ export function summarizeLevel(levelId) {
     if (lg.weapon) loot[lg.weapon] = (loot[lg.weapon] || 0) + 1;
     if (lg.item) loot[lg.item] = (loot[lg.item] || 0) + 1;
     if (lg.enemy) foes[lg.enemy] = (foes[lg.enemy] || 0) + 1;
-    if (lg.obstacle && lg.obstacle !== "spawner") hazards[lg.obstacle] = (hazards[lg.obstacle] || 0) + 1;
+    if (lg.obstacle && lg.obstacle !== "spawner" && lg.obstacle !== "breaker") hazards[lg.obstacle] = (hazards[lg.obstacle] || 0) + 1;
     if (lg.tile === "mirror") hazards.mirror = 1;
     if (lg.tile === "silence") hazards.silence = 1;
     if (lg.tile === "water") hazards.water = 1;
@@ -556,7 +556,7 @@ function updateEnemy(game, e, dt, globalAlert) {
   e.hitFlash = Math.max(0, e.hitFlash - dt);
   e.snared = Math.max(0, (e.snared || 0) - dt);
   const tdef = TILES[tileAt(game, Math.floor(e.x / TILE), Math.floor(e.y / TILE))];
-  const slow = (tdef.slow || 1) * (game.silence ? 1.15 : 1);
+  const slow = (tdef.slow || 1) * (game.silence ? (game.level.silenceBoost || 1.15) : 1);
   const d = Math.hypot(p.x - e.x, p.y - e.y);
   if (d < def.sense || globalAlert || e.relentless) e.alert = Math.max(e.alert, 2.5);
   else e.alert = Math.max(0, e.alert - dt);

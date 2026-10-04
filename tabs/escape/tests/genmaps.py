@@ -58,7 +58,7 @@ def midway():
     # boardwalk
     for x in (3, 15, 27, 47, 59, 71): m.set(x, 9, "l"); m.set(x, 13, "l")
     m.pts("S", (2, 11)); m.pts("f", (5, 10)); m.pts("k", (22, 12)); m.pts("u", (30, 10), (64, 12))
-    m.pts("*", (52, 11)); m.pts("C", (24, 11), (60, 10))
+    m.pts("*", (52, 11)); m.pts("C", (24, 11))
     # south lane
     m.hl(18, 4, 14, "="); m.hl(20, 20, 34, "="); m.hl(18, 48, 60, "="); m.vl(70, 16, 20, "=")
     m.pts("o", (8, 20)); m.pts("E", (32, 18)); m.pts("G", (52, 21)); m.pts("r", (40, 21))
@@ -131,7 +131,7 @@ def pen():
     # mud channel through the middle row band
     m.rect(1, 12, 78, 13, "~"); m.rect(28, 11, 50, 14, "~")
     # rabbits in pens, food in troughs
-    m.pts("r", (12, 7), (30, 7), (48, 7), (18, 18), (36, 18), (56, 18), (40, 12), (66, 7))
+    m.pts("r", (14, 8), (48, 8), (36, 19), (40, 12), (64, 8))
     m.pts("c", (9, 6)); m.pts("o", (33, 9)); m.pts("p", (51, 6)); m.pts("a", (70, 6)); m.pts("b", (21, 19)); m.pts("g", (39, 17)); m.pts("a", (60, 20))
     # lamps along the north lane
     for x in (10, 26, 44, 60, 74): m.set(x, 1, "l")
@@ -181,21 +181,24 @@ def carousel():
 # hugs the tree lines round the edge, past rabbits and two searchlights.
 def silent():
     m = M(80, 26, '"')
-    m.pts("S", (2, 2))
-    # silence: a broad diagonal band you must cross on the direct line
+    m.pts("S", (2, 12))
+    # silence: a broad band straight across the direct line, and a second patch
+    # before the exit. Inside it every one of the Unwilling hears you, and on
+    # this field (silenceBoost) they run nearly as fast as you.
     for y in range(4, 22):
-        x0 = 18 + y; m.hl(y, x0, x0 + 14, "s")
-    m.rect(52, 4, 66, 12, "s")
-    # tree lines bound the edge path
+        x0 = 26 + (y - 4) // 3; m.hl(y, x0, x0 + 18, "s")
+    m.rect(56, 8, 65, 17, "s")
+    # tree lines bound the edge lanes (rows 1-3 and 22-24): longer, loud, safe from silence
     for x in range(6, 74, 3): m.set(x, 4, "T"); m.set(x, 21, "T")
-    for y in range(6, 20, 3): m.set(6, y, "T"); m.set(73, y, "T")
-    # dormant Unwilling standing in the field, Sam in the silence
-    m.pts("C", (20, 12), (46, 8), (40, 17), (60, 16), (30, 22)); m.pts("L", (34, 12)); m.pts("E", (58, 8))
-    m.pts("*", (12, 22), (68, 2)); m.pts("r", (3, 14), (40, 23), (76, 10), (50, 1))
-    m.pts("p", (4, 8)); m.pts("o", (24, 2)); m.pts("b", (2, 23)); m.pts("a", (76, 20)); m.pts("G", (70, 23))
-    m.pts("V", (44, 24), (66, 14))
-    m.pts("X", (78, 23), (78, 24))
-    m.pts("k", (40, 12))
+    for y in range(7, 19, 3): m.set(6, y, "T"); m.set(73, y, "T")
+    # dormant Unwilling standing in the field, Sam in the silence, Eli by the exit
+    m.pts("C", (20, 8), (22, 17), (46, 6), (48, 19), (60, 6), (62, 19), (70, 10), (70, 15))
+    m.pts("L", (36, 12)); m.pts("E", (58, 12)); m.pts("k", (40, 9))
+    # edge lanes: searchlights and rabbits, and the loot
+    m.pts("*", (14, 23), (64, 2)); m.pts("r", (24, 2), (52, 1), (32, 23), (58, 24))
+    m.pts("p", (4, 2)); m.pts("o", (40, 2)); m.pts("a", (76, 2)); m.pts("b", (2, 23)); m.pts("G", (50, 23)); m.pts("a", (76, 23))
+    m.pts("V", (44, 1), (36, 24))
+    m.pts("X", (78, 11), (78, 12), (78, 13))
     return m
 
 # ------------------------------------------------------------------ gallery
@@ -214,9 +217,10 @@ def gallery():
     # hall: lamps, Arthur, a cookie
     for x in range(6, 76, 10): m.set(x, 10, "l"); m.set(x + 5, 14, "l")
     m.pts("A", (40, 12)); m.pts("k", (30, 13)); m.pts("j", (56, 12)); m.pts("u", (66, 11))
+    m.pts("C", (50, 10), (61, 14))  # two portraits posed in the hall itself
     # rooms: posed figures, loot
     m.pts("C", (20, 3), (44, 6), (58, 3), (22, 20), (46, 18), (64, 22))
-    m.pts("G", (6, 5)); m.pts("f", (4, 19)); m.pts("a", (30, 2)); m.pts("H", (52, 7)); m.pts("b", (34, 22)); m.pts("p", (70, 2)); m.pts("o", (56, 23))
+    m.pts("G", (6, 5)); m.pts("f", (4, 19)); m.pts("a", (30, 2), (62, 20)); m.pts("H", (52, 7)); m.pts("b", (34, 22)); m.pts("p", (70, 2)); m.pts("o", (56, 23))
     m.pts("j", (14, 4), (26, 21)); m.pts("E", (68, 18)); m.pts("V", (38, 1), (50, 24))
     m.pts("X", (76, 11), (76, 12), (76, 13))
     return m
