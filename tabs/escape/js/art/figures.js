@@ -235,84 +235,330 @@ export function stunBulbs(ctx, y, t, n = 4, rad = 11) {
   }
 }
 
-/* ================================================================ the guest (player) */
-function guestBody(ctx, p, t, view, o = {}) {
-  const sp = Math.hypot(p.vx || 0, p.vy || 0), moving = p.moving || sp > 20;
+/* ================================================================ the guest (player)
+ * An ordinary night at the fair: a teal wool coat worn open over a red-and-cream
+ * striped jumper, a mustard scarf, dark jeans, white-soled sneakers, a paper
+ * wristband, messy brown hair with a tuft that won't lie down. Not a hero.
+ * Everything is driven by view.guest, set by art.render:
+ *   { hp 0..1, san 0..1, dread 0..1, hurtT (s since the last hit), stuck, caught, hatOut, flash }
+ * Fear: brows up, eyes wide with small pupils, breath fogging, a hunched run at high
+ * dread, a trembling lantern at low sanity. Wear: torn jeans, a torn coat, blood,
+ * a limp; at the very bottom of sanity, a smear of white greasepaint on one cheek.
+ * Poses: walk, run, idle (breathing, glancing round), dash, hit, stuck, caught.
+ * Under reduced motion there is no trembling, struggling or shaking. */
+const G = {
+  coat: "#2f5560", coatDark: "#1e3a42", coatLight: "#40707a", lining: "#7a2a30",
+  jumper: "#a8283a", jumper2: "#e6d8bc", scarf: "#c8922e", scarfDark: "#8a5e18",
+  jeans: "#2c3650", jeansDark: "#1c2234", shoe: "#3a2a22", sole: "#e8e0d0",
+  skin: "#e2c09e", skinShade: "#c49a78", hair: "#4a2c18", hairDark: "#2a180c", blood: "#7a0a16",
+};
+const smooth = (k) => k * k * (3 - 2 * k);
+
+function guestState(p, t, view) {
+  const gs = p.guest || (view && view.guest) || {}; // p.guest: an override for previews and cinematics
+  const sp = Math.hypot(p.vx || 0, p.vy || 0);
+  return {
+    sp, moving: !!p.moving || sp > 20, run: clamp(sp / 160, 0, 1.4),
+    hp: gs.hp ?? 1, san: gs.san ?? 1, dread: gs.dread ?? 0,
+    hurtK: gs.hurtT != null && gs.hurtT < 0.45 ? 1 - gs.hurtT / 0.45 : 0,
+    stuck: !!gs.stuck, caught: !!gs.caught, dash: (p.dashT || 0) > 0, hatOut: !!gs.hatOut,
+    reduced: !!(view && view.reduced), flash: gs.flash ?? 1, held: p.held !== undefined ? p.held : (view && view.heldWeapon) || null,
+  };
+}
+
+/* The body. hooks.arms(ctx, B) draws arms, lantern and weapon in the body's frame
+   (before the torso when the guest faces away, after it otherwise); hooks.hat(ctx, B) on the head. */
+function guestBody(ctx, p, t, view, o = {}, hooks = {}) {
+  const S = guestState(p, t, view), C = o.colors ? { ...G, ...o.colors } : G;
   const face = p.face || 0, cx = Math.cos(face), sy = Math.sin(face);
-  const back = sy < -0.6, side = Math.abs(cx);
-  const ph = (p.step != null ? p.step * 2 : t * 6);
-  const sw = moving ? Math.sin(ph) : 0;
-  const bob = moving ? -Math.abs(Math.cos(ph)) * 1.6 : Math.sin(t * 2) * 0.4;
-  const run = clamp(sp / 160, 0, 1.4);
-  const coat = o.coat || "#2f5560", coatDark = o.coatDark || "#203c44";
+  const back = sy < -0.6, side = Math.abs(cx), dir = Math.sign(cx) || 1;
+  const ph = p.step != null ? p.step * 2 : t * 6;
+  const frozen = S.stuck || S.caught;
+  const sw = S.moving && !frozen ? Math.sin(ph) : 0;
+  const fear = clamp(Math.max(S.dread, (1 - S.san) * 0.9, S.hurtK, S.caught ? 1 : 0), 0, 1);
+  const tr = S.reduced ? 0 : Math.max(0, S.dread - 0.45) * 0.9 + Math.max(0, 0.5 - S.san) * 1.4;
+  const trem = tr ? Math.sin(t * 47) * 0.32 * tr : 0;
+  const breath = Math.sin(t * (2.2 + S.dread * 5 + S.run * 3));
+  const hunch = S.caught ? 0 : clamp(S.dread * 0.95 + S.run * 0.25, 0, 1); // the hunched run when they're close
+  let lean = 0, lift = 0;
+  if (S.moving && !frozen) lean = dir * side * S.run * (0.08 + hunch * 0.14);
+  if (S.dash) lean = dir * side * 0.36;
+  if (S.hurtK) lean -= dir * (side > 0.3 ? 0.28 : 0.1) * smooth(S.hurtK); // jerked back
+  if (S.stuck && !S.reduced) lean = Math.sin(t * 9) * 0.13;                  // struggling
+  if (S.caught) lift = -2.5;                                                 // lifted off the ground
+  const bob = S.moving && !frozen ? -Math.abs(Math.cos(ph)) * (1.1 + S.run * 1.5) : breath * 0.3;
   ctx.save();
-  if (moving) ctx.rotate(Math.sign(cx || 1) * side * run * 0.1);
-  ctx.translate(0, bob);
-  const hipY = -9, shY = -22;
+  ctx.translate(trem, 0); ctx.rotate(lean); ctx.translate(0, bob + lift);
+  const hipY = -9.5 + hunch * 0.8, shY = -22 + hunch * 2.4 - (S.moving ? 0 : breath * 0.3);
+  const B = { S, C, face, cx, sy, back, side, dir, sw, ph, shY, hipY, hunch, fear, tr, breath, bob, lean };
+
+  // ---- legs: jeans, sneakers with white soles; a limp when badly hurt
+  const amp = S.dash ? 7 : 2.8 + S.run * 3.2, lifted = 1.8 + S.run * 2.6;
+  const legs = [];
   for (const s of [-1, 1]) {
-    const st = sw * s, fx = s * 3 + st * 4.5 * side * Math.sign(cx || 1), fy = -Math.max(0, st) * 3;
-    limb(ctx, s * 2.8, hipY, fx, fy, s * (1.2 + st), 3.6, "#1e1a22");
-    ellipse(ctx, fx, fy - 0.5, 3, 1.7, "#3a2418");
+    let st = sw * s;
+    if (S.hp < 0.3 && s === 1) st *= 0.4;
+    if (S.dash) st = s * 0.9;
+    let fx = s * 3 + st * amp * side * dir, fy = -Math.max(0, st) * lifted * (1 - side * 0.35);
+    let bend = s * (1.1 + Math.abs(st) * 0.8 + S.run * 0.6);
+    if (S.stuck) { fx = s * 3.6; fy = 0; bend = s * 2.6; }
+    if (S.caught) { fx = s * 1.6; fy = 0; bend = s * 0.3; }
+    legs.push([s, fx, fy, bend]);
   }
-  // coat with a tail that swings
-  ctx.fillStyle = coat;
-  ctx.beginPath(); ctx.moveTo(-7, hipY + 3); ctx.lineTo(7, hipY + 3 - sw); ctx.quadraticCurveTo(8, shY + 4, 6, shY); ctx.quadraticCurveTo(0, shY - 1.5, -6, shY); ctx.quadraticCurveTo(-8, shY + 4, -7, hipY + 3); ctx.fill();
-  ctx.fillStyle = coatDark; ctx.beginPath(); ctx.moveTo(2, hipY + 3); ctx.lineTo(7, hipY + 3 - sw); ctx.quadraticCurveTo(8, shY + 4, 6, shY); ctx.lineTo(3, shY); ctx.fill();
-  if (!back) { ctx.fillStyle = "#c9b48c"; for (let i = 0; i < 3; i++) circle(ctx, 0.5, shY + 4 + i * 3.6, 0.7, "#c9b48c"); }
-  // a ticket stub still in the hatband pocket: admit one
-  if (!back) { ctx.fillStyle = "#e8c860"; ctx.fillRect(-5.5, shY + 3, 3, 2); }
-  // scarf
-  ctx.fillStyle = "#b8862b"; ctx.fillRect(-5.5, shY - 1.5, 11, 3.2);
-  ctx.fillRect(back ? 2 : -4, shY + 1, 2.4, 6 + sw);
-  // head
-  const hy = shY - 6.8;
-  ellipse(ctx, 0, hy, 6.2, 6.6, "#e2c09e");
-  ctx.fillStyle = "#3a2418";
-  if (back) { ellipse(ctx, 0, hy - 0.5, 6.4, 6.6, "#3a2418"); }
-  else {
-    ctx.beginPath(); ctx.ellipse(0, hy - 1.5, 6.6, 5.6, 0, Math.PI * 1.02, Math.PI * 1.98); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(-cx * 2 - 2, hy - 3.6, 4, 2.4, -0.3, 0, TAU); ctx.fill();
-    // eyes wide with fear, looking where you face
-    const ex = cx * 1.8, ey = Math.max(-0.5, sy) * 1.2;
-    for (const s of [-1, 1]) { ellipse(ctx, s * 2.3 + ex, hy + 0.4 + ey * 0.4, 1.5, 1.7, "#fbf6ee"); circle(ctx, s * 2.3 + ex * 1.25, hy + 0.5 + ey * 0.6, 0.75, "#120a08"); }
-    ellipse(ctx, ex * 0.8, hy + 3.6, 1.1, 1.4, "#5a2a22"); // mouth open, breathing hard
-    ctx.fillStyle = "rgba(160,60,50,.25)"; ctx.fillRect(-5, hy + 1.5, 2, 1.2); ctx.fillRect(3, hy + 1.5, 2, 1.2);
+  for (const [s, fx, fy, bend] of legs) {
+    const [jx, jy] = limb(ctx, s * 2.7, hipY, fx, fy - 1, bend, 3.9, s === dir && side > 0.4 ? C.jeansDark : C.jeans);
+    if (S.hp < 0.75 && (s === -1 || S.hp < 0.45)) { // ripped at the knee
+      ellipse(ctx, jx, jy, 1.3, 0.9, C.skin);
+      ctx.strokeStyle = "#c8c0b0"; ctx.lineWidth = 0.3; ctx.beginPath(); ctx.moveTo(jx - 1.2, jy - 0.6); ctx.lineTo(jx + 1.2, jy - 0.4); ctx.moveTo(jx - 1, jy + 0.6); ctx.lineTo(jx + 1.1, jy + 0.7); ctx.stroke();
+      if (S.hp < 0.45) { ctx.fillStyle = C.blood; ctx.fillRect(jx - 0.3, jy, 0.7, 2.2); }
+    }
+    ellipse(ctx, fx + dir * side * 0.9, fy - 0.9, 3.1, 1.8, C.shoe);
+    ctx.fillStyle = C.sole; ctx.fillRect(fx - 2.9 + dir * side * 0.9, fy - 0.1, 5.8, 0.9);
   }
+
+  if (back && hooks.arms) hooks.arms(ctx, B);
+
+  // ---- the coat: open over the jumper, its tail flaring when you run
+  const flare = S.run * 1.6 + (S.dash ? 3 : 0), hemY = hipY + 3.2;
+  ctx.fillStyle = C.coat;
+  ctx.beginPath();
+  ctx.moveTo(-7 - flare * (dir < 0 ? 1 : 0.3), hemY + sw * 0.5);
+  ctx.lineTo(7 + flare * (dir > 0 ? 1 : 0.3), hemY - sw * 0.6);
+  ctx.quadraticCurveTo(8, shY + 4, 6.4, shY - hunch * 1.2);
+  ctx.quadraticCurveTo(0, shY - 2, -6.4, shY - hunch * 1.2);
+  ctx.quadraticCurveTo(-8, shY + 4, -7 - flare * (dir < 0 ? 1 : 0.3), hemY + sw * 0.5);
+  ctx.fill();
+  // the side away from the lantern in shadow
+  ctx.fillStyle = C.coatDark; ctx.beginPath(); ctx.moveTo(2.5, hemY); ctx.lineTo(7 + flare * (dir > 0 ? 1 : 0.3), hemY - sw * 0.6); ctx.quadraticCurveTo(8, shY + 4, 6.4, shY - hunch * 1.2); ctx.lineTo(3.4, shY); ctx.fill();
+  if (back) {
+    ctx.strokeStyle = C.coatDark; ctx.lineWidth = 0.6; ctx.beginPath(); ctx.moveTo(0, shY + 1); ctx.lineTo(0, hemY); ctx.stroke(); // centre seam
+    ctx.fillStyle = C.coatDark; ctx.fillRect(-4.5, hipY - 1.5, 9, 1.6); // half belt
+    circle(ctx, -3.6, hipY - 0.7, 0.55, "#c9b48c"); circle(ctx, 3.6, hipY - 0.7, 0.55, "#c9b48c");
+  } else {
+    // the jumper showing between the lapels: red and cream stripes
+    const jx0 = -2.6 + cx * 0.6, jw = 5.2;
+    for (let y = shY + 1.5, i = 0; y < hipY + 2.5; y += 1.7, i++) { ctx.fillStyle = i % 2 ? C.jumper2 : C.jumper; ctx.fillRect(jx0, y, jw, 1.75); }
+    ctx.fillStyle = "rgba(0,0,0,.18)"; ctx.fillRect(jx0 + jw * 0.6, shY + 1.5, jw * 0.4, hipY - shY + 1);
+    if (S.hp < 0.5) { circle(ctx, jx0 + 1.6, shY + 7, 1.5, C.blood); circle(ctx, jx0 + 3.6, shY + 9.5, 1, C.blood); }
+    if (S.hp < 0.25) { ctx.fillStyle = C.blood; ctx.beginPath(); ctx.ellipse(jx0 + 2.6, hipY - 1, 3.2, 3.6, 0.2, 0, TAU); ctx.fill(); }
+    // lapels and buttons, a pocket with the ticket stub poking out
+    ctx.fillStyle = C.coatLight; ctx.beginPath(); ctx.moveTo(jx0, shY + 1); ctx.lineTo(jx0 - 1.8, shY + 1); ctx.lineTo(jx0, shY + 6); ctx.fill();
+    ctx.fillStyle = C.coatDark; ctx.beginPath(); ctx.moveTo(jx0 + jw, shY + 1); ctx.lineTo(jx0 + jw + 1.8, shY + 1); ctx.lineTo(jx0 + jw, shY + 6); ctx.fill();
+    for (let i = 0; i < 3; i++) circle(ctx, jx0 - 0.9, shY + 6.5 + i * 3, 0.55, "#c9b48c");
+    ctx.fillStyle = C.coatDark; ctx.fillRect(-6.5, hipY - 2.5, 3.4, 1.2);
+    ctx.fillStyle = "#e8c860"; ctx.fillRect(-6, hipY - 3.8, 1.6, 1.6); // admit one
+  }
+  if (S.hp < 0.5) { // a tear in the hem, the lining showing
+    const tx = back ? 3 : -5;
+    ctx.fillStyle = C.lining; ctx.beginPath(); ctx.moveTo(tx - 1.5, hemY - 0.2); ctx.lineTo(tx, hemY - 3.6); ctx.lineTo(tx + 0.6, hemY - 1.6); ctx.lineTo(tx + 1.8, hemY - 0.2); ctx.fill();
+    ctx.strokeStyle = "#0e1a1e"; ctx.lineWidth = 0.4; ctx.stroke();
+  }
+
+  // ---- scarf: wound round, one end hanging, streaming behind when you run
+  const nx = back ? 0 : cx * 0.4;
+  ctx.fillStyle = C.scarf; ctx.fillRect(-5.6 + nx, shY - 2 - hunch * 0.8, 11.2, 3.6);
+  ctx.fillStyle = C.scarfDark; ctx.fillRect(-5.6 + nx, shY - 0.2 - hunch * 0.8, 11.2, 0.8);
+  {
+    const tx0 = (back ? 2.5 : -3) + nx, ty0 = shY + 1;
+    const stream = (S.run + (S.dash ? 1 : 0)) * 6, ex = tx0 - dir * side * stream + sw * 0.8, ey = ty0 + 7 - stream * 0.45;
+    ctx.strokeStyle = C.scarf; ctx.lineWidth = 2.4; ctx.lineCap = "butt";
+    ctx.beginPath(); ctx.moveTo(tx0, ty0); ctx.quadraticCurveTo(tx0 + sw * 0.5, ty0 + 3, ex, ey); ctx.stroke();
+    ctx.strokeStyle = C.scarfDark; ctx.lineWidth = 0.4; ctx.beginPath();
+    for (let i = -1; i <= 1; i++) { ctx.moveTo(ex + i * 0.8, ey); ctx.lineTo(ex + i * 0.8 - dir * side * 0.5, ey + 1.3); } ctx.stroke(); // fringe
+  }
+
+  if (!back && hooks.arms) hooks.arms(ctx, B);
+
+  // ---- head
+  const hx = (back ? 0 : cx * 0.6) + dir * side * hunch * 1.2, hy = shY - 7 + hunch * 1.4;
+  ctx.save(); ctx.translate(hx, hy);
+  let tilt = 0;
+  if (S.hurtK) tilt = -dir * 0.32 * smooth(S.hurtK);
+  if (S.caught) tilt = 0.12 + (S.reduced ? 0 : Math.sin(t * 2) * 0.03);
+  if (S.stuck && !S.reduced) tilt = Math.sin(t * 11) * 0.12;
+  if (tr && !S.moving) tilt += Math.sin(t * 31) * 0.03 * tr;
+  ctx.rotate(tilt);
+  ctx.fillStyle = C.skinShade; ctx.fillRect(-1.6, 4.5, 3.2, 3); // neck
+  let skin = C.skin;
+  if (S.hp < 0.25 || S.san < 0.2) skin = "#cdb8a2"; // the colour going out of you
+  if (back) {
+    ellipse(ctx, 0, 0, 6.2, 6.6, skin);
+    ellipse(ctx, 0, -0.6, 6.5, 6.6, C.hair);
+    ctx.fillStyle = C.hairDark; ctx.beginPath(); ctx.ellipse(0, 3.6, 4.6, 2.4, 0, 0, Math.PI); ctx.fill(); // nape
+    ctx.strokeStyle = C.hairDark; ctx.lineWidth = 0.5; ctx.beginPath(); for (let i = -2; i <= 2; i++) { ctx.moveTo(i * 1.6, -5); ctx.quadraticCurveTo(i * 2, 0, i * 1.8, 4.5); } ctx.stroke();
+  } else {
+    const look = cx * 1.7 + (S.moving || S.reduced ? 0 : (Math.sin(t * 0.7) > 0.75 ? 1 : Math.sin(t * 0.7) < -0.75 ? -1 : 0) * 1.1); // glancing round
+    for (const s of [-1, 1]) if (s * cx < 0.7) ellipse(ctx, s * 6 + look * 0.2, 0.8, 1.2, 1.7, C.skinShade); // ears
+    ellipse(ctx, 0, 0, 6.1, 6.5, skin);
+    ctx.fillStyle = "rgba(150,90,60,.22)"; ctx.beginPath(); ctx.ellipse(2.6 - look * 0.5, 0.6, 3.4, 5.6, 0, 0, TAU); ctx.fill(); // far side in shadow
+    if (S.run > 0.6 || S.dread > 0.5) { ctx.fillStyle = "rgba(210,80,70,.28)"; ctx.fillRect(-4.8 + look * 0.4, 1.8, 2, 1.1); ctx.fillRect(2.8 + look * 0.4, 1.8, 2, 1.1); }
+    // eyes: wide, the pupils small; squeezed shut when hit
+    const ey = 0.4 + Math.max(-0.5, sy) * 0.5;
+    for (const s of [-1, 1]) {
+      const ex = s * 2.4 + look;
+      if (S.hurtK > 0.35) { ctx.strokeStyle = "#2a140c"; ctx.lineWidth = 0.6; ctx.beginPath(); ctx.moveTo(ex - 1.3, ey - 0.4); ctx.lineTo(ex, ey + 0.4); ctx.lineTo(ex + 1.3, ey - 0.4); ctx.stroke(); continue; }
+      ellipse(ctx, ex, ey, 1.55 + fear * 0.15, 1.75 + fear * 0.35, "#fbf6ee");
+      const pr = S.caught ? 0.35 : 0.8 - fear * 0.3, pdx = look * 0.28 + (tr ? Math.sin(t * 23 + s) * 0.12 * tr : 0);
+      circle(ctx, ex + pdx, ey + 0.15 + Math.max(0, sy) * 0.3, pr, "#1a0e08");
+      circle(ctx, ex + pdx - 0.35, ey - 0.35, 0.25, "#fff");
+      // brows drawn up in the middle: afraid
+      ctx.strokeStyle = C.hairDark; ctx.lineWidth = 0.75; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(ex + s * 1.7, ey - 2.2 - fear * 0.2); ctx.lineTo(ex - s * 1.1, ey - 2.6 - fear * 0.8); ctx.stroke();
+    }
+    ellipse(ctx, look * 0.6 + 0.3, 2.5, 0.7, 0.5, C.skinShade); // nose
+    // mouth: open, breathing hard; a grimace when hit; a scream when caught
+    const mx = look * 0.7, my = 4.1;
+    if (S.hurtK > 0.35) { ctx.fillStyle = "#3a1210"; ctx.fillRect(mx - 1.8, my - 0.5, 3.6, 1.2); ctx.fillStyle = "#f4ecd8"; ctx.fillRect(mx - 1.5, my - 0.4, 3, 0.45); }
+    else {
+      const mh = S.caught ? 2.3 : 0.7 + fear * 0.8 + Math.max(0, B.breath) * 0.25 * (S.run + S.dread), mw = S.caught ? 1.5 : 1 + fear * 0.35;
+      ellipse(ctx, mx, my + mh * 0.3, mw, mh, "#4a1a18");
+      if (mh > 1.3) { ctx.fillStyle = "#f4ecd8"; ctx.fillRect(mx - mw * 0.6, my + mh * 0.3 - mh + 0.1, mw * 1.2, 0.4); }
+    }
+    // sweat at the temple
+    if (S.dread > 0.55) { const k = (t * 0.6) % 1; ctx.fillStyle = "rgba(200,230,255,.8)"; ctx.beginPath(); ctx.ellipse(-5.2 + look * 0.3, -2 + k * 4, 0.45, 0.7, 0, 0, TAU); ctx.fill(); }
+    // wear: a scratch, then blood from the hairline, a bruise
+    if (S.hp < 0.75) { ctx.strokeStyle = "#a02028"; ctx.lineWidth = 0.4; ctx.beginPath(); ctx.moveTo(3.2 + look, 2.2); ctx.lineTo(4.8 + look, 1.4); ctx.moveTo(3.4 + look, 3); ctx.lineTo(4.6 + look, 2.4); ctx.stroke(); }
+    if (S.hp < 0.45) { ctx.fillStyle = C.blood; ctx.fillRect(-3.4 + look, -5, 0.7, 4.2); circle(ctx, -3.05 + look, -0.8, 0.45, C.blood); }
+    if (S.hp < 0.25) { ctx.fillStyle = "rgba(90,40,90,.45)"; ctx.beginPath(); ctx.ellipse(2.4 + look, 2.1, 1.5, 0.8, 0, 0, TAU); ctx.fill(); }
+    // the very bottom of sanity: a white smear across one cheek, the mouth's corner pulled up in red
+    if (S.san < 0.25) {
+      const k = clamp((0.25 - S.san) * 6, 0, 1);
+      ctx.fillStyle = `rgba(240,236,226,${0.85 * k})`; ctx.beginPath(); ctx.moveTo(-5.6 + look * 0.3, -0.5); ctx.quadraticCurveTo(-3, 1.2, -1.2 + look, 4); ctx.lineTo(-2.6 + look, 4.4); ctx.quadraticCurveTo(-4.6, 2.6, -5.8 + look * 0.3, 1.6); ctx.fill();
+      ctx.strokeStyle = `rgba(192,18,44,${k})`; ctx.lineWidth = 0.5; ctx.beginPath(); ctx.moveTo(mx + 1.1, my + 0.2); ctx.quadraticCurveTo(mx + 2.6, my - 0.4, mx + 3.4, my - 2); ctx.stroke();
+    }
+    // breath fogging in the cold, quicker when afraid
+    if (!S.caught) for (let i = 0; i < 3; i++) {
+      const k = (t * (0.7 + S.dread * 1.4 + S.run * 0.6) + i / 3) % 1;
+      ctx.fillStyle = `rgba(220,226,236,${0.32 * (1 - k)})`;
+      circle(ctx, mx + cx * (2 + k * 5), my + 1 - k * 4, 0.8 + k * 2.4, ctx.fillStyle);
+    }
+    // hair: a messy brown mop, a fringe, a tuft that won't lie down
+    ctx.fillStyle = C.hair;
+    ctx.beginPath(); ctx.ellipse(0, -1.9, 6.6, 5.4, 0, Math.PI * 0.98, Math.PI * 2.02); ctx.fill();
+    for (const s of [-1, 1]) { ctx.beginPath(); ctx.moveTo(s * 6.5, -2); ctx.lineTo(s * 6.6, 1.2); ctx.lineTo(s * 5.4, -0.4); ctx.fill(); }
+    ctx.beginPath(); // fringe clumps falling over the forehead
+    for (let i = 0; i < 4; i++) { const x = -4.6 + i * 2.6 + look * 0.5; ctx.moveTo(x - 1.6, -3.4); ctx.lineTo(x + 0.4, -1.2 + (i % 2) * 0.6); ctx.lineTo(x + 1.4, -3.6); }
+    ctx.fill();
+    ctx.fillStyle = C.hairDark; ctx.beginPath(); ctx.ellipse(-1 - look * 0.3, -5.2, 3.6, 1.2, -0.2, 0, TAU); ctx.fill();
+  }
+  // the tuft, and stray strands as your nerve goes
+  ctx.strokeStyle = C.hair; ctx.lineWidth = 1.1; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(0.8, -6.4); ctx.quadraticCurveTo(1.6, -9.4, 3.6, -9.6); ctx.moveTo(-0.4, -6.4); ctx.quadraticCurveTo(-0.6, -8.8, 1, -9.8); ctx.stroke();
+  if (S.san < 0.5) { ctx.lineWidth = 0.45; ctx.beginPath(); for (let i = 0; i < 4; i++) { const a = -2.6 + i * 0.55; ctx.moveTo(Math.cos(a) * 5.5, Math.sin(a) * 5.5 - 1.5); ctx.lineTo(Math.cos(a) * 8.2, Math.sin(a) * 8.2 - 1.5 + (i % 2)); } ctx.stroke(); }
+  if (hooks.hat) hooks.hat(ctx, B);
   ctx.restore();
-  return { bob, sw, back, cx, sy, shY, hipY };
+  ctx.restore();
+  return B;
+}
+
+/* weapon carried at rest: each one held its own way. Called inside the body's frame. */
+function carry(ctx, B, id, wsx, t) {
+  const { shY, S } = B, sh = [wsx * 6.2, shY + 1.5];
+  const arm = (hx, hy, bend) => { limb(ctx, sh[0], sh[1], hx, hy, bend, 2.6, B.C.coat); circle(ctx, hx, hy, 1.4, B.C.skin); };
+  const icon = (x, y, rot, size) => { ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ICONS[id](ctx, size, t); ctx.restore(); };
+  switch (id) {
+    case "fork": arm(wsx * 7.5, shY + 8, wsx * -1.5); icon(wsx * 7.8, shY + 6, B.face + Math.PI / 2 + 0.3, 16); circle(ctx, wsx * 7.5, shY + 8, 1.4, B.C.skin); break;
+    case "hat": arm(wsx * 7, shY + 10, wsx * -1); ctx.fillStyle = B.C.skinShade; circle(ctx, wsx * 7, shY + 10, 1.6, B.C.skin); break; // the hat is on your head
+    case "candy": icon(wsx * 7.5, shY - 6, wsx * 0.2, 14); arm(wsx * 7.5, shY - 1, wsx * 2); ctx.fillStyle = "rgba(255,122,217,.7)"; ctx.fillRect(wsx * 7.5 - 1, shY - 1.6, 2, 1.2); break;
+    case "rings": {
+      const hx = wsx * 7.6, hy = shY + 9; arm(hx, hy, wsx * -1.2);
+      for (const [k, c] of [[0.35, "#7af0ff"], [0.55, "#ff2a4d"], [0.75, "#f6d27a"]]) { // stacked up the forearm
+        const x = sh[0] + (hx - sh[0]) * k + wsx * 0.6, y = sh[1] + (hy - sh[1]) * k + 1.5;
+        ctx.strokeStyle = c; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.ellipse(x, y, 3.2, 1.5, wsx * 0.3, 0, TAU); ctx.stroke();
+      }
+      break;
+    }
+    case "popcorn": {
+      icon(wsx * 2.4, shY + 6.5, 0, 12); arm(wsx * 3.6, shY + 8, wsx * 2.2); // hugged to the chest
+      const k = (t * 0.9) % 1; if (S.moving && k < 0.5) circle(ctx, wsx * 3 + k * 2, shY + 9 + k * 14, 0.8, "#fff8d8"); // spilling
+      break;
+    }
+    case "mallet": icon(wsx * 5.5, shY - 4, wsx > 0 ? 0 : -1.2, 22); arm(wsx * 4.5, shY + 2.5, wsx * 2.5); break; // over the shoulder
+    case "popgun": { // at the hip, the barrel toward where you face (across the body when facing the camera or away)
+      const sideOn = B.side > 0.5, gx = sideOn ? B.dir * 4 : wsx * 3.5, gy = shY + 9;
+      ctx.save(); ctx.translate(gx, gy); ctx.scale(sideOn ? B.dir : wsx, 1); ctx.rotate(sideOn ? 0.5 : 0.85); ICONS.popgun(ctx, 22, t); ctx.restore();
+      arm(gx - (sideOn ? B.dir : wsx) * 1.5, gy + 0.5, wsx * -1.2); break;
+    }
+    default: if (ICONS[id]) { icon(wsx * 7.5, shY + 7, B.face + 0.5, 15); } arm(wsx * 7.5, shY + 9, wsx * -1.2);
+  }
 }
 
 export function drawPlayer(ctx, p, t, view) {
   view = view || {};
+  const S = guestState(p, t, view);
   const fxv = Math.cos(p.face || 0), fyv = Math.sin(p.face || 0);
-  shadow(ctx, 9.5, 4, 0.55);
+  shadow(ctx, 9.5, 4, S.caught ? 0.35 : 0.55);
   if (p.dashT > 0) for (let i = 3; i >= 1; i--) { // dash ghosts
     ctx.save(); ctx.globalAlpha = 0.16 * (4 - i); ctx.translate(-fxv * i * 9, -fyv * i * 9);
-    guestBody(ctx, p, t, view, { coat: "#7af0ff", coatDark: "#3aa0b0" }); ctx.restore();
+    guestBody(ctx, p, t, view, { colors: { coat: "#7af0ff", coatDark: "#3aa0b0", coatLight: "#a8f6ff" } }); ctx.restore();
   }
-  if (p.invuln > 0 && !p.dashT) ctx.globalAlpha = 0.62;
-  const held = view.heldWeapon;
-  const behind = fyv < -0.3; // weapon arm drawn behind the body when facing away
+  if (p.invuln > 0 && !p.dashT && !S.hurtK) ctx.globalAlpha = 0.62;
+  const held = S.held;
   const swinging = p.swing > 0;
   const dur = view.swingDur || 0.2;
   const k = swinging ? clamp(1 - p.swing / dur, 0, 1) : 0;
   const arc = p.swingArc || 1.2;
-  const wAng = swinging ? (p.face - arc / 2 + arc * (k * k * (3 - 2 * k))) : p.face + 0.5;
-  const reach = swinging ? 15 : 9;
-  const handX = Math.cos(wAng) * reach, handY = -13 + Math.sin(wAng) * reach * 0.6;
-  const drawWeapon = () => {
-    if (held && ICONS[held]) { ctx.save(); ctx.translate(handX, handY); ctx.rotate(wAng + Math.PI / 2); ICONS[held](ctx, 17, t); ctx.restore(); }
-    circle(ctx, handX, handY, 2.2, "#e2c09e");
+  const wAng = swinging ? (p.face - arc / 2 + arc * smooth(k)) : p.face + 0.5;
+  // lantern in one hand, the weapon in the other
+  const lsx = Math.abs(fyv) > 0.35 ? -Math.sign(fyv) : -0.35 * Math.sign(fxv);
+  const wsx = Math.abs(lsx) < 0.5 ? -lsx * 2 : -lsx;
+  const arms = (c, B) => {
+    const { shY, S: s, sw, side, dir, tr } = B;
+    // ---- the lantern arm: hanging, swinging with the stride, raised toward the face when they're close
+    const shx = lsx * 6.2, shy = shY + 1.5;
+    let hx = lsx * 7.2 + sw * side * dir * -2.4, hy = shY + 9.5 - s.dread * 4.5 - sw * 0.6 * (1 - side);
+    if (s.dash) { hx = lsx * 6 - dir * side * 6; hy = shY + 6; }
+    if (s.stuck && !s.reduced) { hx = lsx * 9; hy = shY - 3 + Math.sin(t * 12) * 2; }
+    if (s.caught) { hx = lsx * 6.8; hy = shY + 11; }
+    if (s.hurtK) { hx = lsx * 4; hy = shY + 1; } // a hand up to the face
+    limb(c, shx, shy, hx, hy, lsx * 1.6, 2.6, B.back ? B.C.coatDark : B.C.coat);
+    c.fillStyle = "#c0303e"; c.fillRect(hx - 1.2, hy - 1.8, 2.4, 0.8); // paper wristband
+    circle(c, hx, hy, 1.4, B.C.skin);
+    // the lantern hangs from the bail and swings; it trembles when your nerve goes
+    let la = clamp(-(p.vx || 0) * 0.0022, -0.5, 0.5) + sw * 0.22;
+    if (tr) la += Math.sin(t * 29) * 0.12 * tr;
+    if (s.caught) la = 0;
+    const lx = hx + Math.sin(la) * 5.2, ly = hy + Math.cos(la) * 5.2;
+    c.strokeStyle = "#5a5040"; c.lineWidth = 0.6; c.beginPath(); c.moveTo(hx, hy); c.lineTo(lx, ly - 2.6); c.stroke();
+    c.save(); c.translate(lx, ly); c.rotate(-la * 0.5);
+    c.fillStyle = "#2a2622"; c.fillRect(-2.6, -2.8, 5.2, 1.4); c.fillRect(-2.9, 3.6, 5.8, 1.4);
+    const g = c.createLinearGradient(0, -1.6, 0, 3.6); g.addColorStop(0, "rgba(255,236,170,.95)"); g.addColorStop(1, "rgba(255,170,70,.95)");
+    c.fillStyle = g; c.fillRect(-2.2, -1.5, 4.4, 5.2);
+    const gutter = s.san < 0.3 && Math.sin(t * 5.3) > 0.55 ? 0.35 : 1;
+    const fh = 2.3 * gutter * (0.85 + 0.15 * Math.sin(t * 17));
+    c.fillStyle = "#fff8d8"; c.beginPath(); c.moveTo(-0.8, 2.6); c.quadraticCurveTo(0, 2.6 - fh * 1.4, 0.8, 2.6); c.fill();
+    c.strokeStyle = "#2a2622"; c.lineWidth = 0.5; c.beginPath(); c.moveTo(-2.2, -1.5); c.lineTo(-2.2, 3.7); c.moveTo(2.2, -1.5); c.lineTo(2.2, 3.7); c.moveTo(0, -1.5); c.lineTo(0, -0.4); c.stroke();
+    glint(c, 0, 1.2, 3.2 * gutter, "#ffd890", 0.55);
+    c.restore();
+    // ---- the weapon arm
+    if (swinging) {
+      const reach = 15, wx = Math.cos(wAng) * reach, wy = shY + 9 + Math.sin(wAng) * reach * 0.6;
+      limb(c, wsx * 6.2, shY + 1.5, wx, wy, wsx * -1.2, 2.6, B.C.coat);
+      if (held && ICONS[held]) { c.save(); c.translate(wx, wy); c.rotate(wAng + Math.PI / 2); ICONS[held](c, held === "mallet" ? 22 : 17, t); c.restore(); }
+      circle(c, wx, wy, 1.5, B.C.skin);
+    } else if (s.stuck && !s.reduced) {
+      limb(c, wsx * 6.2, shY + 1.5, wsx * 9, shY - 3 + Math.sin(t * 12 + 2) * 2, wsx * 1.5, 2.6, B.C.coat); circle(c, wsx * 9, shY - 3 + Math.sin(t * 12 + 2) * 2, 1.4, B.C.skin);
+    } else if (s.caught) {
+      limb(c, wsx * 6.2, shY + 1.5, wsx * 6.8, shY + 11, 0, 2.6, B.C.coat); circle(c, wsx * 6.8, shY + 11, 1.4, B.C.skin);
+    } else if (held && !(held === "hat") && ICONS[held]) {
+      carry(c, B, held, wsx, t);
+    } else {
+      const hx2 = wsx * 7.2 - sw * side * dir * -2.4, hy2 = shY + 9.5 + sw * 0.6 * (1 - side);
+      limb(c, wsx * 6.2, shY + 1.5, s.dash ? wsx * 6 - dir * side * 6 : hx2, s.dash ? shY + 6 : hy2, wsx * -1.2, 2.6, B.back ? B.C.coatDark : B.C.coat);
+      circle(c, s.dash ? wsx * 6 - dir * side * 6 : hx2, s.dash ? shY + 6 : hy2, 1.4, B.C.skin);
+    }
+    // blood running off the fingers when badly hurt
+    if (s.hp < 0.25) { const kk = (t * 1.3) % 1; circle(c, lsx * 7.2, shY + 11 + kk * 8, 0.5 * (1 - kk) + 0.2, B.C.blood); }
   };
-  if (behind) drawWeapon();
-  const body = guestBody(ctx, p, t, view);
-  // lantern hand, the other side
-  const lx = -fyv * 8 - fxv * 3, ly = -12 + body.bob + Math.abs(fxv) * 1.5 + body.sw * 1.2;
-  line(ctx, lx, ly - 7, lx, ly - 3.5, 0.8, "#4a4030");
-  ctx.fillStyle = "#2a2622"; ctx.fillRect(lx - 2.6, ly - 4, 5.2, 1.6); ctx.fillRect(lx - 2.6, ly + 3, 5.2, 1.4);
-  ctx.fillStyle = "rgba(255,214,120,.95)"; ctx.fillRect(lx - 2.1, ly - 2.4, 4.2, 5.4);
-  circle(ctx, lx, ly + 0.3, 1.4, "#fff8d8");
-  if (!behind) drawWeapon();
+  const hat = (c, B) => {
+    if (held !== "hat" || S.hatOut || swinging) return;
+    c.save(); c.translate(0, -5.6); c.rotate(B.back ? 0 : -B.cx * 0.1); ICONS.hat(c, 17, t); c.restore();
+  };
+  const B = guestBody(ctx, p, t, view, {}, { arms, hat });
+  // hit: a red flinch over the whole silhouette (scaled by the flash setting)
+  if (S.hurtK > 0 && S.flash > 0) {
+    ctx.save(); ctx.globalAlpha = 0.22 * S.hurtK * S.flash * (S.reduced ? 0.5 : 1); ctx.rotate(B.lean); ctx.translate(0, B.bob); guestGhost(ctx, p, t, "#ff2a3a"); ctx.restore();
+  }
   // swing trail: a hot crescent through the arc
   if (swinging) {
     const R = (p.swingRange || 50) * 0.85, a0 = p.face - arc / 2, a1 = wAng;
@@ -327,13 +573,18 @@ export function drawPlayer(ctx, p, t, view) {
   ctx.globalAlpha = 1;
 }
 
-/* the guest's silhouette, for the negative-film afterimage when marked */
+/* the guest's silhouette: the negative-film afterimage when marked, and the hit flinch.
+   Head with its tuft, the scarf end, the coat, legs, the lantern: readable at a glance. */
 export function guestGhost(ctx, p, t, col) {
   ctx.save();
-  ctx.fillStyle = col; ctx.strokeStyle = col;
-  ctx.beginPath(); ctx.ellipse(0, -29, 6.4, 6.8, 0, 0, TAU); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(-7, -6); ctx.lineTo(7, -6); ctx.lineTo(6, -22); ctx.lineTo(-6, -22); ctx.fill();
-  ctx.lineWidth = 3.4; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(-3, -8); ctx.lineTo(-3, 0); ctx.moveTo(3, -8); ctx.lineTo(3, 0); ctx.stroke();
+  ctx.fillStyle = col; ctx.strokeStyle = col; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.ellipse(0, -29, 6.6, 6.8, 0, 0, TAU); ctx.fill();
+  ctx.lineWidth = 1.3; ctx.beginPath(); ctx.moveTo(0.5, -35); ctx.quadraticCurveTo(1.6, -38.5, 3.8, -38.6); ctx.stroke(); // the tuft
+  ctx.beginPath(); ctx.moveTo(-7.4, -6); ctx.lineTo(7.4, -6); ctx.quadraticCurveTo(8, -18, 6.4, -22.5); ctx.lineTo(-6.4, -22.5); ctx.quadraticCurveTo(-8, -18, -7.4, -6); ctx.fill();
+  ctx.lineWidth = 2.6; ctx.beginPath(); ctx.moveTo(-3, -21); ctx.quadraticCurveTo(-4, -16, -5.5, -13); ctx.stroke(); // scarf end
+  ctx.lineWidth = 3.6; ctx.beginPath(); ctx.moveTo(-3, -8); ctx.lineTo(-3, 0); ctx.moveTo(3, -8); ctx.lineTo(3, 0); ctx.stroke();
+  ctx.lineWidth = 2.4; ctx.beginPath(); ctx.moveTo(-6.4, -20); ctx.lineTo(-7.4, -12.5); ctx.stroke();
+  ctx.fillRect(-10, -12, 5.2, 6.4); // the lantern
   ctx.restore();
 }
 

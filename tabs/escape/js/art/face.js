@@ -9,6 +9,7 @@
  *   o.shirt        collar colour
  *   o.seed         varies cracks and hair
  *   o.tilt         head tilt (radians)
+ *   o.guest        dress it as the player: striped jumper, teal lapels, mustard scarf, short hair, fringe and tuft
  */
 import { TAU, hash, lerpColor, clamp } from "./util.js";
 
@@ -35,17 +36,23 @@ export function bigFace(ctx, cx, cy, r, t, o = {}) {
   ctx.fillStyle = o.shirt || "#2a2620";
   ctx.beginPath(); ctx.moveTo(-r * 2.3, r * 3.2); ctx.quadraticCurveTo(-r * 2.1, r * 1.55, -r * 0.5, r * 1.35 + jaw * r * 0.2); ctx.lineTo(r * 0.5, r * 1.35 + jaw * r * 0.2); ctx.quadraticCurveTo(r * 2.1, r * 1.55, r * 2.3, r * 3.2); ctx.fill();
   ctx.fillStyle = "rgba(0,0,0,.45)"; ctx.beginPath(); ctx.moveTo(-r * 0.5, r * 1.3); ctx.lineTo(0, r * 2.2); ctx.lineTo(r * 0.5, r * 1.3); ctx.fill();
+  if (o.guest) { // the guest's own clothes: the teal coat open over the striped jumper, the mustard scarf
+    ctx.save(); ctx.beginPath(); ctx.moveTo(-r * 0.62, r * 1.4); ctx.lineTo(0, r * 3.2); ctx.lineTo(r * 0.62, r * 1.4); ctx.closePath(); ctx.clip();
+    for (let i = 0; i < 12; i++) { ctx.fillStyle = i % 2 ? "#e6d8bc" : "#a8283a"; ctx.fillRect(-r, r * 1.35 + i * r * 0.16, r * 2, r * 0.16); }
+    ctx.restore();
+    ctx.fillStyle = "#40707a"; for (const s of [-1, 1]) { ctx.beginPath(); ctx.moveTo(s * r * 0.62, r * 1.4); ctx.lineTo(s * r * 1.05, r * 1.5); ctx.lineTo(s * r * 0.35, r * 2.6); ctx.fill(); }
+  }
   // neck, grey where the paint stopped
   ctx.fillStyle = lerpColor(skin, "#7a7266", 0.4); ctx.fillRect(-r * 0.42, r * 0.7, r * 0.84, r * 0.9);
   // red run down the neck from the mouth
   if (paint > 0.4) { ctx.fillStyle = `rgba(150,8,24,${(paint - 0.4) * 1.4})`; ctx.fillRect(r * 0.18, r * 1.1, r * 0.07, r * (0.5 + jaw * 0.6)); ctx.fillRect(-r * 0.3, r * 1.15, r * 0.05, r * 0.35 * jaw); }
 
-  // hair behind: matted, hanging
-  const hair = o.hair || "#1e1612";
+  // hair behind: matted, hanging (the guest's is short)
+  const hair = o.hair || "#1e1612", hairK = o.guest ? 0.22 : 1;
   ctx.strokeStyle = hair; ctx.lineCap = "round";
   for (let i = 0; i < 46; i++) {
     const a = Math.PI * (0.92 + (i / 45) * 1.16), sx = Math.cos(a) * r * 0.98, sy = Math.sin(a) * r * 1.05 - r * 0.1;
-    const len = r * (0.5 + hash(seed, i, 1) * 0.9) * (Math.abs(Math.cos(a)) > 0.6 ? 1.6 : 0.4);
+    const len = r * (0.5 + hash(seed, i, 1) * 0.9) * (Math.abs(Math.cos(a)) > 0.6 ? 1.6 : 0.4) * hairK;
     ctx.lineWidth = r * (0.05 + hash(seed, i, 2) * 0.07);
     ctx.beginPath(); ctx.moveTo(sx, sy); ctx.quadraticCurveTo(sx * 1.15, sy + len * 0.5, sx * (1.05 + hash(seed, i, 5) * 0.2), sy + len); ctx.stroke();
   }
@@ -91,6 +98,18 @@ export function bigFace(ctx, cx, cy, r, t, o = {}) {
   }
   ctx.restore();
 
+  if (o.guest) { // the scarf, the fringe and the tuft that won't lie down
+    ctx.fillStyle = "#c8922e"; ctx.beginPath(); ctx.moveTo(-r * 0.75, chin * 0.82); ctx.quadraticCurveTo(0, chin * 1.2, r * 0.75, chin * 0.82); ctx.lineTo(r * 0.85, chin * 1.12); ctx.quadraticCurveTo(0, chin * 1.5, -r * 0.85, chin * 1.12); ctx.fill();
+    ctx.fillStyle = "#8a5e18"; ctx.fillRect(-r * 0.75, chin * 1.06, r * 1.5, r * 0.05);
+    ctx.fillStyle = "#c8922e"; ctx.fillRect(-r * 0.6, chin * 1.15, r * 0.3, r * 1.2);
+    ctx.fillStyle = hair;
+    ctx.beginPath(); ctx.ellipse(0, -r * 0.78, r * 0.98, r * 0.5, 0, Math.PI, Math.PI * 2); ctx.fill();
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) { const x = -r * 0.8 + i * r * 0.32; ctx.moveTo(x - r * 0.18, -r * 0.82); ctx.lineTo(x + r * 0.04, -r * (0.42 + hash(seed, i, 61) * 0.18)); ctx.lineTo(x + r * 0.2, -r * 0.84); }
+    ctx.fill();
+    ctx.strokeStyle = hair; ctx.lineWidth = r * 0.09; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(r * 0.05, -r * 1.2); ctx.quadraticCurveTo(r * 0.2, -r * 1.55, r * 0.5, -r * 1.55); ctx.moveTo(-r * 0.08, -r * 1.2); ctx.quadraticCurveTo(-r * 0.1, -r * 1.5, r * 0.12, -r * 1.62); ctx.stroke();
+  }
   // painted eyebrows, high and arched, surprised forever
   if (paint > 0.3) {
     ctx.strokeStyle = `rgba(14,6,10,${clamp((paint - 0.3) * 2, 0, 0.9)})`; ctx.lineWidth = r * 0.035;

@@ -27,7 +27,21 @@ Owner: the art agent. Files: `js/art.js` plus `js/art/{util,tiles,figures,props,
   - Bulb strings hang on a sagging wire, and many bulbs are dead.
 - Gate prop redrawn in red and gold iron, taller.
 
-## Polish pass (this deploy)
+## Player character detail pass (this deploy)
+The guest (`art/figures.js`: `guestBody`, `drawPlayer`, `carry`, `guestGhost`) now has the Unwilling's level of detail:
+- **Look**: an ordinary night out. A teal wool coat worn open (lapels, buttons, a pocket with the ticket stub, a half-belt at the back) over a red-and-cream striped jumper; a mustard scarf with a fringed tail; dark jeans; white-soled sneakers; a paper wristband; messy brown hair with a fringe and a tuft that won't lie down.
+- **State** comes from `view.guest`, set in `art.render`: `{ hp, san, dread, hurtT, stuck, caught, hatOut, flash }`. A figure can carry its own `p.guest` / `p.held` override (used by previews).
+- **Fear**: brows drawn up, eyes widening with the pupils shrinking, a mouth that opens with dread, breath fogging (quicker when afraid), sweat at high dread, and a hunched, forward-leaning run as they close in.
+- **Poses**: walk and run (the stride, knee bend and lean scale with speed; the coat tail flares; the scarf streams), idle (breathing, nervous glances), dash (lunge plus the cyan ghosts), hit (jerked back, eyes squeezed shut, a hand up, a brief red flinch scaled by the flash setting), stuck (struggling, arms up), caught (lifted, arms limp, head back, a pinprick-eyed scream).
+- **Lantern**: hangs from its bail in the off hand, swings with the stride and velocity, is raised toward the face at high dread, and has a flickering flame and a glint (drawn after the lighting). The light pool is now centred on the lantern hand (`drawLighting`). At low sanity it trembles and the flame gutters; the pool shakes too, except under reduced motion.
+- **Weapons carried** (`carry`): the fork held point-out; the cowboy hat **worn** (it leaves your head while it's thrown: `hatOut`); the cotton-candy cone held up by the head; rings stacked up the forearm; the popcorn bag hugged to the chest, spilling; the mallet over the shoulder; the popgun at the hip. Swings use the old arc plus the arm.
+- **Wear**: below 75% health, ripped knees and a scratched cheek; below 45%, a torn coat hem showing the lining, blood on the jumper and from the hairline; below 25%, a soaked side, a bruise, a pale face, a limp and blood dripping from the fingers. Below 50% sanity, stray hair and the trembling lantern; below 25%, a white greasepaint smear on one cheek and the mouth's corner pulled up in red.
+- **Marked afterimage**: `guestGhost` was redrawn to the new silhouette (tuft, scarf end, coat, lantern). It is also used for the hit flinch.
+- **Caught scene**: `bigFace` takes `o.guest`, which adds the striped jumper, teal lapels, mustard scarf, short hair, fringe and tuft, so the face being painted over is recognisably the player's.
+- **Reduced motion**: no trembling, struggling or head shake, and the lantern pool doesn't jitter. The hit flinch is halved.
+- Review harnesses (in the scratchpad, `game/`): `player.cjs` (every pose, weapon and wear state as a grid of clones at 2.375×, 5× and phone 1×), `marked.cjs` (afterimage and a worn guest in play), `caught.cjs` (renderCaught at 0, 1.5, 3 and 5 s).
+
+## Polish pass
 - **Teacup, carousel horse, cursed cookie redrawn** (`art/props.js`) to match the Unwilling, readable at gameplay zoom (2.4 desktop, 1.0 phone):
   - Teacup: grimy faded china with a leaking crack, a chipped rim, blood slopped over the saucer and dripping; the "tea" is thick and turning, with bubbles; a second hand hooked on the far rim; the rider is one of the Unwilling (`paintedHead`, now exported from figures.js), lolled over the rim, one long arm hanging down the outside, fingers dripping.
   - Horse: tarnished pole run through its back with a wet ring; a flayed flank showing muscle and ribs; wrong-way knees, one leg snapped; skull-like head, black socket with a red eyeshine glint; gums peeled back over two rows of human teeth, jaw dropped, drool; mane and tail of lank human hair.

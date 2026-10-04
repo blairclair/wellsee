@@ -49,7 +49,7 @@ function shadow0(ctx, r) { ellipse(ctx, 0, 0, r, r * 0.42, "rgba(0,0,0,.45)"); }
 
 /* ================================================================ fx state */
 export const fx = {
-  parts: [], words: [], decals: [], lights: [], trail: [], shake: 0, flash: 0, flashColor: "#ff0000", lastFlash: -9, time: 0,
+  parts: [], words: [], decals: [], lights: [], trail: [], shake: 0, flash: 0, flashColor: "#ff0000", lastFlash: -9, lastHurt: -9, time: 0,
   face: 0, faceCd: 0, zoomK: 0, swingDur: 0.2, swingHeavy: false, lastSwing: 0, trailT: 0,
 };
 const WORDS = ["HONK!", "BONK!", "SQUEAK!", "WHAP!", "THWACK!"];
@@ -94,6 +94,7 @@ export function onEvent(ev, view) {
     }
     case "ding": word(x, y - 70, "DING!", PAL.candy, true); shake(6, view); tempLight(x, y - 20, 140, "#ff2a4d", 0.3, 0.6); break;
     case "hurt":
+      fx.lastHurt = fx.time;
       burstParts(x, y, 14, { color: ["#8b1414", "#c41a2a", "#5a0a10"], speed: 140, life: 0.7 });
       decal(x + (Math.random() - 0.5) * 10, y + 2, "blood", 12);
       shake(9, view); flash("#c4102a", 0.45, view); break;
@@ -395,7 +396,12 @@ function drawLighting(ctx, game, cam, z, pre, t, W, H, view) {
   // the guest's lantern: a small warm pool and a narrow throw where you face; both shrink with sanity
   const p = game.player, san = clamp(game.run.sanity / 100, 0, 1);
   const lr = (58 + 62 * san) * flick(0.77, t, 0.08);
-  lc.globalAlpha = 0.95; lc.drawImage(tintLight("#ffd9a0"), p.x - lr, p.y - 14 - lr, lr * 2, lr * 2);
+  // centred on the lantern hand (figures.js: lantern on the side away from the weapon); it shakes when your nerve goes
+  const pfx = Math.cos(p.face || 0), pfy = Math.sin(p.face || 0);
+  const lsx = Math.abs(pfy) > 0.35 ? -Math.sign(pfy) : -0.35 * Math.sign(pfx);
+  const shk = reducedNow(view) ? 0 : Math.max(0, 0.5 - san) * 2.4;
+  const lpx = p.x + lsx * 7 + Math.sin(t * 29) * shk, lpy = p.y - 12 + Math.cos(t * 23) * shk;
+  lc.globalAlpha = 0.95; lc.drawImage(tintLight("#ffd9a0"), lpx - lr, lpy - lr, lr * 2, lr * 2);
   const cl = 120 + 90 * san;
   lc.save(); lc.translate(p.x, p.y - 12); lc.rotate(p.face || 0); lc.globalAlpha = 0.45 + 0.25 * san;
   lc.drawImage(tintCone("#ffe8c0"), -6, -cl * 0.38, cl, cl * 0.76); lc.restore();
@@ -475,6 +481,13 @@ export function render(ctx, game, cam, view) {
   if (p.swing > fx.lastSwing + 0.01) { fx.swingDur = p.swing; fx.swingHeavy = p.swing > 0.25; }
   fx.lastSwing = p.swing || 0;
   view.swingDur = fx.swingDur; view.swingHeavy = fx.swingHeavy;
+  // the guest's state, for the player figure: wear, fear, poses
+  view.guest = {
+    hp: clamp(game.run.health / 100, 0, 1), san: clamp(game.run.sanity / 100, 0, 1), dread: game.dread || 0,
+    hurtT: fx.time - fx.lastHurt, stuck: !!(game.status && game.status.stuck > 0),
+    caught: !!(game.outcome && game.outcome.type === "caught"), flash: SET.flash ?? 1,
+    hatOut: game.entities.some((e) => e.cat === "proj" && e.type === "hat"),
+  };
   // the negative afterimage trail while marked
   const marked = game.status && game.status.marked > 0;
   fx.trailT += dt;
@@ -710,7 +723,7 @@ export function renderCaught(ctx, W, H, t, view, cause) {
     ctx.restore();
   }
   const skin = lerpColor("#e2c09e", "#a49c8c", ease);
-  bigFace(ctx, cx, cy, r, t, { paint: ease, jaw: clamp(ease * 1.3 - 0.2, 0, 1), hollow: clamp(ease * 1.4 - 0.3, 0, 1), skin, shirt: "#2f5560", hair: "#3a2418", seed: 9, tilt: Math.sin(t * 0.7) * 0.03 * (1 - ease) });
+  bigFace(ctx, cx, cy, r, t, { paint: ease, jaw: clamp(ease * 1.3 - 0.2, 0, 1), hollow: clamp(ease * 1.4 - 0.3, 0, 1), skin, shirt: "#2f5560", hair: "#4a2c18", guest: true, seed: 9, tilt: Math.sin(t * 0.7) * 0.03 * (1 - ease) });
   // the brush still working
   if (k < 1) {
     ctx.strokeStyle = `rgba(240,234,220,${0.5 * (1 - k)})`; ctx.lineWidth = r * 0.22; ctx.lineCap = "round";
