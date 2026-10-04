@@ -35,6 +35,15 @@ all 27 panels render, and a contact-sheet comparison showed no regressions.
 Not done from step 1: nothing in `R.person` reads differently at panel scale for seated poses
 beyond the pelvis; check `sit` on the modelsheet (the curved pelvis reads a little like a cushion).
 
+**Live (2026-10-04, "rusty model: head structure, grief/hollow, seated pelvis"), step 2 done:**
+`R.head` adds eye-socket shadow (clipped; opacity .06 + age*.2 + wear*.18 + `expr.socket`, faint
+on Jess/Danny), cheekbone shadow + arcs (age > .4), jowl lines (age > .7), frown lines between the
+brows (age > .9 or `expr.knit`), and an extra broken forehead line + under-bag folds at wear > .6.
+New `R.EXPR.grief` (knotted brows, heavy lids, no tears) and `R.EXPR.hollow` (blank stare: small
+unlit pupils via new optional `expr.pupil`/`expr.glint:false`). Seated poses (dy with near-horizontal
+thighs: sit, sitLow, sit3q, sitChin, sitSlump) get a flatter pelvis that sits on the seat line
+instead of the cushion-like standing pelvis. p12 and p27 checked; all 27 panels render.
+
 **Next, in this order (nothing below is started):** step 2 (head structure + `grief`/`hollow`),
 step 3 (creepy helpers), step 4 (Unwilling options + organic player limbs), then the SCRIPT-v2 model
 needs (Rusty 39, Danny 6, Carol adult, the granddaughter baby/4/6/8, Danny and Jess at 37, crowd,

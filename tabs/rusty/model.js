@@ -258,7 +258,13 @@
     cry: { bi: 9, bo: -4, eye: .45, curve: -.7, open: .1, tears: true },
     drunk: { bi: -3, bo: 5, eye: .38, curve: .25, open: .35 },
     hurt: { bi: 8, bo: -2, eye: .8, curve: -.8, open: .2 },
-    closed: { bi: 3, bo: -3, eye: 0, curve: -.2, open: 0 }
+    closed: { bi: 3, bo: -3, eye: 0, curve: -.2, open: 0 },
+    /* grief: brows knotted up in the middle, lids heavy, mouth pulled down, no tears
+       (Rusty doesn't cry on-panel except p49, which uses "cry"). */
+    grief: { bi: 12, bo: -7, eye: .32, curve: -.95, open: .04, socket: .25, knit: 1 },
+    /* hollow: the blank, resigned stare. Flat brows, level lids, small unlit pupils fixed
+       straight ahead, a flat mouth, deep sockets. Reads "unhappy but resigned" at wear 1. */
+    hollow: { bi: 1, bo: -2, eye: .52, curve: -.18, open: 0, glint: false, pupil: .6, socket: .35 }
   };
 
   /* R.head(k, o): o = {x,y,s,rot, ch, expr, turn(-1..1), wear(0..1), light(-1 left lit / 1 right lit), lw, hat, look} */
@@ -293,6 +299,15 @@
       sh += P(d, mix(skin, "#5a3a3a", .45), null, 0, 'opacity=".55"') + R.tone(k, d, .35);
     }
     sh += P("M-30,58 C-10,66 10,66 30,58 L30,80 L-30,80Z", mix(skin, "#5a3a3a", .3), null, 0, 'opacity=".5"');
+    /* eye sockets: a soft shadow round each eye, deeper with age, wear and e.socket
+       (faint on young faces); cheekbone shadow beneath them from age .4 */
+    var sockOp = Math.min(.62, .06 + age * .2 + w * .18 + (e.socket || 0));
+    [-1, 1].forEach(function (sd) {
+      var ex = sd * 17 + dx;
+      sh += '<ellipse cx="' + f(ex) + '" cy="-11" rx="' + f(15 + age * 2) + '" ry="' + f(10 + age * 2.5 + w * 2) + '" fill="' + mix(skin, "#3a2228", .55) + '" opacity="' + f(sockOp) + '"/>';
+      if (age > .4) sh += P("M" + f(sd * 44 + dx * .5) + ",4 C" + f(sd * 36 + dx) + ",10 " + f(sd * 28 + dx) + ",14 " + f(sd * 18 + dx) + ",14 C" + f(sd * 28 + dx) + ",20 " + f(sd * 38 + dx) + ",22 " + f(sd * 46 + dx * .5) + ",18Z",
+        mix(skin, "#3a2228", .4), null, 0, 'opacity="' + f(Math.min(.4, (age - .4) * .45 + w * .1)) + '"');
+    });
     if (c.stubble || w > .2) {
       var st = Math.max(c.stubble || 0, (w - .2) * 1.2);
       sh += P("M-48,8 C-40,46 -20,64 0,64 C20,64 40,46 48,8 C34,28 18,24 0,26 C-18,24 -34,28 -48,8Z", k.url("dots"), null, 0, 'opacity="' + f(st * .55) + '"');
@@ -313,6 +328,20 @@
         wr += P("M-34,30 C-32,40 -28,46 -24,50", "none", INK, lw * .5);
         wr += P("M34,30 C32,40 28,46 24,50", "none", INK, lw * .5);
       }
+      if (age > .4) [-1, 1].forEach(function (sd) {
+        /* cheekbone arc under the eye, jowl line from the mouth corner to the jaw */
+        wr += P("M" + f(sd * 38 + dx * .6) + ",2 Q" + f(sd * 32 + dx) + ",9 " + f(sd * 22 + dx) + ",10", "none", INK, lw * .45);
+        if (age > .7) wr += P("M" + f(sd * 27 + dx) + "," + f(42 + w * 3) + " C" + f(sd * 31 + dx) + ",50 " + f(sd * 30 + dx) + ",56 " + f(sd * 22 + dx) + ",62", "none", INK, lw * .5);
+      });
+      if (age > .9 || e.knit) {
+        /* vertical frown lines between the brows */
+        wr += P("M" + f(dx - 5) + ",-34 C" + f(dx - 6) + ",-28 " + f(dx - 5) + ",-24 " + f(dx - 3) + ",-20 M" + f(dx + 5) + ",-34 C" + f(dx + 6) + ",-28 " + f(dx + 5) + ",-24 " + f(dx + 3) + ",-20", "none", INK, lw * .45);
+      }
+      if (w > .6) {
+        /* deep wear: a broken extra forehead line and a fold under the bags */
+        wr += P("M" + f(dx - 26) + ",-43 Q" + f(dx - 12) + ",-48 " + f(dx - 2) + ",-44 M" + f(dx + 4) + ",-45 Q" + f(dx + 16) + ",-48 " + f(dx + 26) + ",-42", "none", INK, lw * .45);
+        [-1, 1].forEach(function (sd) { wr += P("M" + f(sd * 10 + dx) + ",6 Q" + f(sd * 18 + dx) + ",11 " + f(sd * 28 + dx) + ",5", "none", INK, lw * .4); });
+      }
       s += "<g " + wl + ">" + wr + "</g>";
     }
     /* eyes */
@@ -327,9 +356,9 @@
         var top = "M" + f(inner) + "," + ey + " C" + f(ex - sd * ew * .4) + "," + f(ey - h1) + " " + f(ex + sd * ew * .5) + "," + f(ey - h1) + " " + f(outer) + "," + f(ey + dr);
         var full = top + " C" + f(ex + sd * ew * .4) + "," + f(ey + h2 + dr * .5) + " " + f(ex - sd * ew * .5) + "," + f(ey + h2) + " " + f(inner) + "," + ey + "Z";
         s += P(full, "#f3ead8", INK, lw * .6);
-        var pr = Math.min(4, h1 * .45 + 1.2), px = ex + t * 3 + (o.look || 0) * 3.5;
+        var pr = Math.min(4, h1 * .45 + 1.2) * (e.pupil || 1), px = ex + t * 3 + (o.look || 0) * 3.5;
         s += '<circle cx="' + f(px) + '" cy="' + f(ey + .5) + '" r="' + f(pr) + '" fill="' + INK + '"/>';
-        if (o.glint !== false) s += '<circle cx="' + f(px + 1.3) + '" cy="' + f(ey - 1) + '" r="' + f(pr * .32) + '" fill="#fff"/>';
+        if (o.glint !== false && e.glint !== false) s += '<circle cx="' + f(px + 1.3) + '" cy="' + f(ey - 1) + '" r="' + f(pr * .32) + '" fill="#fff"/>';
         s += P(top, "none", INK, lw * 1.25);
         if (c.lashes) s += P("M" + f(outer) + "," + f(ey + dr) + " l" + (sd * 5) + ",-4", "none", INK, lw * .7);
       }
@@ -504,7 +533,15 @@
         " C" + f(ft[0] + 30) + "," + f(ft[1] - 4) + " " + f(ft[0] + 32) + "," + f(ft[1] + 6) + " " + f(ft[0] + 27) + "," + f(ft[1] + 8) + "Z", of.boots, INK, lw * .8);
     });
     if (of.stains) s += '<circle cx="' + f(legs[1][1][0] + 4) + '" cy="' + f(legs[1][1][1] + 10) + '" r="9" fill="#4a1512" opacity=".7"/>';
-    if (!of.gown) s += P(warpPath("M-41," + f(-192 + dy) + " L41," + f(-192 + dy) + " C44," + f(-178 + dy) + " 43," + f(-166 + dy) + " 35," + f(-157 + dy) +
+    /* seated (thighs near horizontal): a flatter pelvis whose underside sits on the seat line
+       just below the thighs, instead of the standing pelvis hanging under them like a cushion */
+    var seated = dy && Math.abs(legs[0][1][1] - legs[0][0][1]) < 30;
+    if (seated && !of.gown) {
+      var sy = legs[0][0][1];
+      s += P(warpPath("M-41," + f(-192 + dy) + " L41," + f(-192 + dy) + " C46," + f(sy - 22) + " 50," + f(sy - 6) + " 44," + f(sy + 12) +
+        " C30," + f(sy + 17) + " -30," + f(sy + 17) + " -42," + f(sy + 13) + " C-50," + f(sy + 4) + " -48," + f(sy - 18) + " -41," + f(-192 + dy) + "Z", wx, 1), pants, INK, lw * .8) +
+        P(warpPath("M-30," + f(sy + 2) + " C-12," + f(sy + 8) + " 12," + f(sy + 8) + " 30," + f(sy + 2), wx, 1), "none", INK, lw * .45, 'opacity=".5"');
+    } else if (!of.gown) s += P(warpPath("M-41," + f(-192 + dy) + " L41," + f(-192 + dy) + " C44," + f(-178 + dy) + " 43," + f(-166 + dy) + " 35," + f(-157 + dy) +
       " C20," + f(-150 + dy) + " -20," + f(-150 + dy) + " -35," + f(-157 + dy) + " C-43," + f(-166 + dy) + " -44," + f(-178 + dy) + " -41," + f(-192 + dy) + "Z", wx, 1), pants, INK, lw * .8);
     function armSvgFar(A) { return armSvg(A); }
     /* torso group (rotated by stoop around hip) */
