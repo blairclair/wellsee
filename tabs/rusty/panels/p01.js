@@ -16,13 +16,28 @@ RUSTY.panel({
     s += R.bigTop(k, { x: 560, y: 545, s: .62, a: "#5e1010", b: "#b8a888", fade: .55 });
     s += R.bigTop(k, { x: 390, y: 545, s: .4, a: "#3e0c0c", b: "#7a6a58", fade: .5 });
     s += R.bulbWire(k, [300, 480], [700, 470], 26, 9, { r: 3, red: true, dead: 3 });
+    /* something waits in the doorway of the big top */
+    s += '<circle cx="551" cy="520" r="1.8" fill="#ffe9a8"/><circle cx="560" cy="520" r="1.8" fill="#ffe9a8"/><circle cx="572" cy="528" r="1.6" fill="#ff3b2f"/><circle cx="580" cy="528" r="1.6" fill="#ff3b2f"/>';
+    /* low haze: puts the carnival far behind */
+    s += '<defs><linearGradient id="' + k.id("haze") + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5a1612" stop-opacity="0"/><stop offset=".7" stop-color="#5a1612" stop-opacity=".55"/><stop offset="1" stop-color="#2a0b0d" stop-opacity=".7"/></linearGradient></defs>';
+    s += '<rect x="0" y="470" width="1200" height="78" fill="' + k.url("haze") + '"/>';
     /* floor: wet, reflecting */
     s += P("M0,545 H1200 V700 H0Z", k.url("floor"));
     s += P("M0,545 H1200", "none", INK, 3);
-    s += '<rect x="530" y="548" width="60" height="150" fill="#8b1414" opacity=".25"/>';
+    /* the big top, broken up in the wet floor */
+    var rf = "", rr = "";
+    for (var ry = 556; ry < 690; ry += 8) {
+      var wv = 150 - (ry - 556) * .75, jx = (ry % 16 ? 7 : -5), wr = wv * .38;
+      rf += "M" + (560 - wv / 2 + jx).toFixed(0) + "," + ry + " h" + wv.toFixed(0) + " ";
+      rr += "M" + (560 - wr / 2 - jx).toFixed(0) + "," + (ry + 3) + " h" + wr.toFixed(0) + " ";
+    }
+    s += P(rf, "none", "#b8a888", 2, 'opacity=".1"') + P(rr, "none", "#c0221b", 3, 'opacity=".32"');
     /* the slick */
     s += P("M640,655 C700,628 900,626 990,646 C1060,664 1000,690 900,694 C800,698 600,690 640,655Z", "#4a0a0c", null, 0, 'opacity=".95"');
     s += P("M700,660 C780,648 880,648 940,660", "none", "#c0221b", 2.5, 'opacity=".5"');
+    s += '<ellipse cx="952" cy="664" rx="12" ry="4" fill="#fff4cc" opacity=".85"/>' + R.glow(k, 952, 664, 40, .5);
+    s += '<ellipse cx="952" cy="664" rx="26" ry="6" fill="none" stroke="#e85a4a" stroke-width="1.6" opacity=".6"/><ellipse cx="952" cy="664" rx="42" ry="10" fill="none" stroke="#c0221b" stroke-width="1.4" opacity=".45"/>';
+    s += P("M560,684 C610,676 650,676 700,682", "none", "#4a0a0c", 6, 'opacity=".7"') + P("M470,692 C520,686 560,688 590,692", "none", "#4a0a0c", 4, 'opacity=".5"');   /* mop trail, back toward the tent */
     /* the bulb */
     s += P("M830,0 L830,150", "none", "#2a2020", 3);
     s += R.glow(k, 830, 170, 420, .55) + R.glow(k, 830, 170, 120, .9);
