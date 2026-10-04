@@ -27,6 +27,14 @@ Owner: the art agent. Files: `js/art.js` plus `js/art/{util,tiles,figures,props,
   - Bulb strings hang on a sagging wire, and many bulbs are dead.
 - Gate prop redrawn in red and gold iron, taller.
 
+## Polish pass (this deploy)
+- **Teacup, carousel horse, cursed cookie redrawn** (`art/props.js`) to match the Unwilling, readable at gameplay zoom (2.4 desktop, 1.0 phone):
+  - Teacup: grimy faded china with a leaking crack, a chipped rim, blood slopped over the saucer and dripping; the "tea" is thick and turning, with bubbles; a second hand hooked on the far rim; the rider is one of the Unwilling (`paintedHead`, now exported from figures.js), lolled over the rim, one long arm hanging down the outside, fingers dripping.
+  - Horse: tarnished pole run through its back with a wet ring; a flayed flank showing muscle and ribs; wrong-way knees, one leg snapped; skull-like head, black socket with a red eyeshine glint; gums peeled back over two rows of human teeth, jaw dropped, drool; mane and tail of lank human hair.
+  - Cookie: burnt edge, a bite out of it showing wet pink and red; a human face pressed into the dough: real eyes in sunken sockets that dart about, icing tears, a torn screaming mouth with teeth and broken icing stitches; chips like scabs (one moves).
+  - Props now `import { paintedHead, glint } from "./figures.js"` (an import cycle with figures.js → ICONS, safe because both are only used at call time).
+- Phone UI (ui.css): route cards come before the map on phones (both 2- and 3-choice tiers fit a 375×667 screen); the HUD in the finale is ~85 px tall (was ~140) and the pockets are smaller.
+
 ## Performance
 - Headless Chromium uses software rasterising, so it is not representative of a laptop.
   - Before: art.render took about 28-36 ms/frame (rAF about 28-38 fps) on desktop 1280x760 at DPR 2.
@@ -38,7 +46,6 @@ Owner: the art agent. Files: `js/art.js` plus `js/art/{util,tiles,figures,props,
 1. Done: the pre-fix event shim in `onEvent` is gone; `hit`/`spawn` carry `enemy`.
 2. Phone readability: ask content/engine to raise the camera zoom floor on narrow screens (`updateCamera` `Math.max(0.85, …)`, to about 1.15 when W < 500). Already requested via main.
 3. Remaining art:
-   - Grotesque pass on the teacup, horse and cookie at gameplay zoom.
    - Weapon hit effects per weapon (the `hit` event has `enemy`; `throw`/`burst` carry `weapon`).
    - A distinct look for `bigtop`/`carousel`.
    - The bloom/glow additive pass is the next software-render cost.

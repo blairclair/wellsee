@@ -81,7 +81,7 @@ Art: `ENTITY_ART.id`.
 **Tile**: `TILES.name = { solid?, slow?, silence?, exit?, light?:{r,color,flicker}, touch?(api) }` + a `LEGEND` char.
 Art: `TILE_ART.name(ctx, x, y, size, tx, ty, game)` (static, prerendered) and optionally `TILE_FX.name(ctx, x, y, size, t)` (animated).
 
-**Level**: `LEVELS.id = { name, tag, blurb, base, ambient, length(1-5), threat(1-5), pressure:{every, max, types}, palette, final?, silenceBoost?, init?(api), update?(api, dt), map:[rows] }`
+**Level**: `LEVELS.id = { name, tag, blurb, base, ambient, length(1-5), threat(1-5), pressure:{every, max, types}, palette, final?, silenceBoost?, flashEvery? (Arthur's reload here), reward? ({ text, heal, sanity, restock, gift:[weapon, uses], toast }, applied at the exit, `text` shown on the route card), init?(api), update?(api, dt), map:[rows] }`
 then put the id in a `ROUTE` tier. Maps need a closed border, one `S`, at least one `X`.
 `pressure.max` caps the hunters the tent flaps sent (relentless), not dormant figures placed on the map.
 `init` runs once after spawns, `update` every frame before entities (the finale uses both).

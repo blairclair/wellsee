@@ -52,9 +52,21 @@ Full routes after (average bot, grabs pickups within 10 tiles):
 
 The sharp bot wins 92–100% of routes. In engine.test, the finale with a fork is won 20/20. N=24 is noisy (about ±10%).
 
+## Polish pass (this deploy)
+- **Pen is a real choice now.** Pressure `every 32, max 4` → `every 60, max 2`. New level field `reward` (engine applies it on reaching the exit; `summarizeLevel` passes `reward.text` to the route card, shown in green):
+  `{ heal 35, sanity 25, restock 0.5 (each held weapon +50% of a fresh one's uses, capped at 2×), gift ["popcorn", 4] (tops up, fills a free slot, or replaces your most worn-out weapon) }`.
+  Map (genmaps.py): a second popcorn on the north lane (38,2); the hat in the middle pen became popcorn.
+  Why popcorn: a per-inventory probe showed the pen's downstream deaths came from what you carry out of it (fork + hat + snare) vs the mirrors (fork + hat + popcorn): next-zone damage 35–80 vs 0–20.
+- **Gallery harder.** New level field `flashEvery` (Arthur's reload, 5.5 s default) = 3.6 in the gallery; pressure every 18 → 15; three more posed Unwilling in the hall (genmaps.py).
+- Numbers, `SKIP_WEAPONS=1 SKILL=0.5 REACT=0.2 node tests/balance.mjs 24` (average bot), before → after:
+  - routes: mirrors>carousel 67→58%, mirrors>silent 58→58%, mirrors>gallery 88→88%; **pen>carousel 33→88%, pen>silent 0→46%, pen>gallery 13→46%** (pen mean 15% → 60%, mirrors mean 71% → 68%; N=24 is ±10%).
+  - gallery zone, rush: dmg 28 → 75 (sharp bot 24 → 36), still 100% escape; loot dmg 42 → 41.
+  - pen zone, loot: 79% / 70 dmg → 100% / 20 dmg (76 s → 87 s).
+  - sharp bot: every route 100% (pen>silent was 96%).
+
 ## Remaining weaknesses / next steps
-1. **The pen branch is dominated.** It is about 45 s slower, and the extra tent spawns kill the looting bot later in the run. It's safe if you skip the troughs (rush: 3 dmg). Next: lower `pen.pressure` further or give the pen a unique reward (e.g. a guaranteed mallet + lantern), then rerun `SKILL=0.5 REACT=0.2 node tests/balance.mjs 24`.
-2. The gallery is a little easy for its threat rating (rush: 30 dmg). Consider a second Arthur flash window, or a shorter `flashEvery` in the hall.
+1. Done (polish pass): the pen branch and the gallery, see above. Pen > silent / gallery are still the weakest routes (46%); the gate decides most runs.
+2. The gate is the wall: 4% rush / 17% loot for the average bot with fresh hp and no weapons.
 3. The bot never looks back at Lettie and aims with assist, so its numbers are only relative. Playtest by hand: the mirrors maze and the finale waves (Tobias + Sam) are the likely pain points.
 4. Desktop fps in headless Chromium was 29–41 (phone 85–111). The bigger maps make the prerendered tile canvas larger, so the art agent should check this.
 5. `tests/genmaps.py --write` rewrites every map. Hand edits in content.js must be ported back to genmaps.py first.

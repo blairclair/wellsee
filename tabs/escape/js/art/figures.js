@@ -27,7 +27,7 @@ export function glint(ctx, x, y, r, color, a = 1) {
 }
 
 /* ================================================================ the painted head */
-function paintedHead(ctx, r, e, t, o, look, flash) {
+export function paintedHead(ctx, r, e, t, o, look, flash) {
   const id = (e && e.id) || 0;
   const hair = flash ? "#ffe8e0" : o.hair || "#2a1c14";
   const paint = flash ? "#ffffff" : o.paint || "#e8e2d6";

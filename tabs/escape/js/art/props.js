@@ -1,6 +1,7 @@
 /* art/props.js — weapon icons, pickups, projectiles, the rabbits and every
  * obstacle on the grounds. ENTITY_ART signatures: (ctx, e, t, view), ctx at the feet. */
 import { TAU, PAL, clamp, hash, ellipse, circle, shadow, limb, line, glowSprite } from "./util.js";
+import { paintedHead, glint } from "./figures.js"; // call-time only, so the import cycle with figures.js is safe
 
 /* ================================================================ icons (HUD + pickups + held) */
 export const ICONS = {
@@ -208,104 +209,181 @@ PROPS.rabbit = function rabbit(ctx, e, t) {
 
 /* ================================================================ obstacles */
 PROPS.teacup = function teacup(ctx, e, t) {
-  const spin = e.spin || 0;
-  // the saucer platform, cracked, turning
-  ellipse(ctx, 0, 4, 32, 14, "rgba(0,0,0,.55)");
-  ellipse(ctx, 0, 0, 31, 14.5, "#d8ccb4"); ellipse(ctx, 0, -1, 27, 12, "#b8a888");
-  ctx.strokeStyle = "rgba(60,40,30,.6)"; ctx.lineWidth = 0.8;
-  for (let i = 0; i < 3; i++) { const a = spin * 0.3 + i * 2.1; ctx.beginPath(); ctx.moveTo(Math.cos(a) * 12, Math.sin(a) * 5); ctx.lineTo(Math.cos(a + 0.2) * 22, Math.sin(a + 0.2) * 9); ctx.lineTo(Math.cos(a + 0.1) * 28, Math.sin(a + 0.1) * 12); ctx.stroke(); }
-  // speed lines on the saucer
-  ctx.strokeStyle = "rgba(255,95,162,.35)"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(0, -1, 25, 11, 0, spin, spin + 1.4); ctx.stroke();
-  // the cup
-  ctx.fillStyle = "#e8508e";
+  const spin = e.spin || 0, id = e.id || 0;
+  // what has slopped over the rim: a dark pool under the saucer, dragged round by the spin
+  ellipse(ctx, 0, 5, 34, 14, "rgba(0,0,0,.6)");
+  ellipse(ctx, 6, 7, 22, 7, "rgba(70,4,12,.75)");
+  // the saucer: yellowed, cracked, rimmed with old blood
+  ellipse(ctx, 0, 0, 31, 14.5, "#a89c84"); ellipse(ctx, 0, -1, 28.5, 12.6, "#c8bca2"); ellipse(ctx, 0, -1, 24, 10.4, "#9c8e74");
+  ctx.fillStyle = "rgba(90,6,16,.85)"; ctx.beginPath(); ctx.ellipse(0, -1, 26, 11.4, 0, spin * 0.5, spin * 0.5 + 2.4); ctx.ellipse(0, -1, 22, 9.4, 0, spin * 0.5 + 2.4, spin * 0.5, true); ctx.fill();
+  ctx.strokeStyle = "rgba(30,18,12,.85)"; ctx.lineWidth = 0.9;
+  for (let i = 0; i < 4; i++) { const a = spin * 0.3 + i * 1.6; ctx.beginPath(); ctx.moveTo(Math.cos(a) * 14, Math.sin(a) * 6); ctx.lineTo(Math.cos(a + 0.25) * 22, Math.sin(a + 0.25) * 9.5); ctx.lineTo(Math.cos(a + 0.1) * 30, Math.sin(a + 0.1) * 13.6); ctx.stroke(); }
+  // drips off the front lip of the saucer
+  ctx.fillStyle = "#6e0714";
+  for (let i = 0; i < 4; i++) { const x = -18 + i * 11 + hash(id, i, 1) * 4, len = 2 + ((t * 2.2 + hash(id, i, 2) * 3) % 4); ctx.fillRect(x, 11 + Math.abs(x) * -0.08, 1.4, len); circle(ctx, x + 0.7, 11 + len - Math.abs(x) * 0.08, 1, "#6e0714"); }
+  // the cup: faded pink gone grey with grime, gradient-shaded
+  const g = ctx.createLinearGradient(-23, 0, 23, 0);
+  g.addColorStop(0, "#8a4a5e"); g.addColorStop(0.35, "#b05a78"); g.addColorStop(0.7, "#7a3248"); g.addColorStop(1, "#3a1420");
+  ctx.fillStyle = g;
   ctx.beginPath(); ctx.moveTo(-23, -14); ctx.bezierCurveTo(-22, 6, -10, 9, 0, 9); ctx.bezierCurveTo(10, 9, 22, 6, 23, -14); ctx.fill();
-  ctx.fillStyle = "rgba(0,0,0,.25)"; ctx.beginPath(); ctx.moveTo(8, -14); ctx.bezierCurveTo(8, 6, 14, 8, 15, 7); ctx.bezierCurveTo(21, 4, 22, -4, 23, -14); ctx.fill();
-  // polka dots wheel round; some chipped down to the grey
-  for (let i = 0; i < 7; i++) { const a = spin + (i * TAU) / 7, c = Math.cos(a); if (c < -0.15) continue; const x = Math.sin(a) * 18, y = -4 + (i % 2) * 5; circle(ctx, x, y, 2.6 * (0.45 + c * 0.55), i === 3 ? "#8a8078" : "#fff2a8"); }
-  ctx.fillStyle = "#b07a20"; ctx.fillRect(-23, -15.5, 46, 2); // gilt rim, flaking
-  ellipse(ctx, 0, -14, 23, 8, "#f0d8c0"); ellipse(ctx, 0, -14, 20, 6.5, "#3a0814");
-  ellipse(ctx, 0, -13.5, 17, 5, "#5a0a18"); // it is not tea
-  ctx.strokeStyle = "rgba(160,30,50,.7)"; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.ellipse(0, -13.5, 10, 3, 0, spin * 2, spin * 2 + 2.5); ctx.stroke();
+  // grime runs down from the rim
+  ctx.fillStyle = "rgba(30,14,10,.35)";
+  for (let i = 0; i < 7; i++) { const x = -20 + i * 6.5 + hash(id, i, 3) * 2; ctx.fillRect(x, -13, 1.6, 6 + hash(id, i, 4) * 12); }
+  // polka dots: dirty, half gone
+  for (let i = 0; i < 7; i++) { const a = spin + (i * TAU) / 7, c = Math.cos(a); if (c < -0.15) continue; const x = Math.sin(a) * 18, y = -4 + (i % 2) * 5; circle(ctx, x, y, 2.6 * (0.45 + c * 0.55), i === 3 || i === 5 ? "#5a4a48" : "#c8b880"); }
+  // a crack straight down the cup, and it is leaking
+  ctx.strokeStyle = "#140406"; ctx.lineWidth = 1.6; ctx.lineJoin = "miter";
+  ctx.beginPath(); ctx.moveTo(-6, -14); ctx.lineTo(-3, -8); ctx.lineTo(-7, -3); ctx.lineTo(-4, 2); ctx.lineTo(-6, 8); ctx.stroke();
+  ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(-3, -8); ctx.lineTo(1, -6); ctx.moveTo(-7, -3); ctx.lineTo(-11, -1); ctx.stroke();
+  ctx.fillStyle = "#8a0a1c"; ctx.fillRect(-5, -2, 1.6, 9 + ((t * 1.5) % 3)); ctx.fillRect(-7, 3, 1.2, 6);
+  // the rim, gilt flaked to black, a bite of china gone from it
+  ctx.fillStyle = "#6a5020"; ctx.fillRect(-23, -15.5, 46, 2);
+  ellipse(ctx, 0, -14, 23, 8, "#d8c8b0"); ellipse(ctx, 0, -14, 20.5, 6.6, "#22040a");
+  // it is not tea: thick, dark, turning slowly, a skin on it
+  ellipse(ctx, 0, -13.6, 18.5, 5.6, "#4a0610");
+  ctx.strokeStyle = "rgba(200,60,80,.45)"; ctx.lineWidth = 0.8;
+  ctx.beginPath(); ctx.ellipse(0, -13.6, 12, 3.4, 0, spin * 2, spin * 2 + 2.2); ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(0, -13.6, 6, 1.8, 0, -spin * 2.6, -spin * 2.6 + 2); ctx.stroke();
+  for (let i = 0; i < 3; i++) { const k = (t * 0.7 + i / 3) % 1; circle(ctx, -10 + i * 6, -13 - k * 0.6, 0.6 + k * 1.1, `rgba(150,20,40,${0.8 - k * 0.8})`); } // bubbles
+  // chipped notch, the broken china showing
+  ctx.fillStyle = "#e8dcc8"; ctx.beginPath(); ctx.moveTo(13, -19.4); ctx.lineTo(16, -15.5); ctx.lineTo(19, -18.6); ctx.fill();
+  ctx.fillStyle = "#22040a"; ctx.beginPath(); ctx.moveTo(13.5, -19.2); ctx.lineTo(16, -16.6); ctx.lineTo(18.4, -18.8); ctx.fill();
   // the handle, swinging round
   const ha = spin % TAU, hx = Math.sin(ha) * 24, front = Math.cos(ha) > 0;
-  if (front) { ctx.strokeStyle = "#e8508e"; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(hx, -5, 5, 0, TAU); ctx.stroke(); }
-  // someone is still riding: slumped, painted, one hand over the rim
-  ellipse(ctx, 4, -18, 8, 6, "#1a0a10");
-  ctx.save(); ctx.translate(5, -24); ctx.rotate(0.5);
-  ellipse(ctx, 0, 0, 4.6, 5.2, "#ece4d6");
-  circle(ctx, -1.6, -1, 1.2, "#0a0306"); circle(ctx, 1.6, -1, 1.2, "#0a0306"); circle(ctx, 1.6, -1, 0.4, PAL.bulbHot);
-  ctx.fillStyle = PAL.mouth; ctx.beginPath(); ctx.moveTo(-3.4, 1); ctx.quadraticCurveTo(0, 5, 3.4, 1); ctx.quadraticCurveTo(0, 3, -3.4, 1); ctx.fill();
+  if (front) { ctx.strokeStyle = "#7a3248"; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(hx, -5, 5, 0, TAU); ctx.stroke(); ctx.strokeStyle = "rgba(20,8,6,.5)"; ctx.lineWidth = 1; ctx.stroke(); }
+  // a second hand comes up out of it, fingers hooked on the far rim
+  ctx.strokeStyle = "#8a8276"; ctx.lineWidth = 1.3; ctx.lineCap = "round";
+  const cl = Math.sin(t * 1.3 + id) * 0.6;
+  for (let i = 0; i < 4; i++) { const x = -15 + i * 2.2; ctx.beginPath(); ctx.moveTo(x, -13); ctx.lineTo(x - 0.5, -18.5 + cl * (i % 2)); ctx.lineTo(x + 0.6, -20.2 + cl); ctx.stroke(); }
+  ctx.fillStyle = "#5a0a14"; ctx.fillRect(-16, -14.4, 8, 1.6);
+  // the rider: slumped against the rim, head lolled, one long arm hanging over the side
+  ctx.fillStyle = "#1a0a10"; ctx.beginPath(); ctx.ellipse(5, -18, 8.5, 6, -0.2, 0, TAU); ctx.fill(); // shoulders, a nightshirt gone black
+  ctx.fillStyle = "#3a2a30"; ctx.fillRect(10, -20, 3, 3);
+  // the arm over the front: elbow on the rim, the forearm down the outside, fingers too long
+  ctx.strokeStyle = "#1a0a10"; ctx.lineWidth = 3.4; ctx.beginPath(); ctx.moveTo(9, -18); ctx.lineTo(12, -13); ctx.stroke();
+  ctx.strokeStyle = "#8a8276"; ctx.lineWidth = 2.2; ctx.beginPath(); ctx.moveTo(12, -13); ctx.lineTo(13.5, -3); ctx.stroke();
+  ctx.lineWidth = 0.9; const sw = Math.sin(t * 1.1 + id) * 0.8;
+  for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.moveTo(13.5, -3); ctx.lineTo(12 + i * 1.2 + sw * 0.3, 2); ctx.lineTo(12.4 + i * 1.3 + sw, 5.5 + (i % 2)); ctx.stroke(); }
+  ctx.fillStyle = "#8a0a1c"; ctx.fillRect(14, 4, 0.9, 3 + ((t * 2) % 3)); // running off the fingertips
+  ctx.save(); ctx.translate(4, -25); ctx.rotate(0.55 + Math.sin(t * 0.8 + id) * 0.06);
+  paintedHead(ctx, 6.2, { id: id + 3, alert: 1 }, t, { hair: "#20140e", hairStyle: "long", jaw: 0.75, grin: 1.2 }, 0.3, false);
   ctx.restore();
-  ctx.fillStyle = "#e8e0d2"; ctx.fillRect(-12, -16, 2, 4); ctx.fillRect(-10, -16, 2, 3.5); ctx.fillRect(-8, -16, 2, 4.2);
 };
 
 PROPS.horse = function horse(ctx, e, t) {
-  const bob = (e.bob || 0) * 5, ph = e.phase || 0;
-  shadow(ctx, 15, 5, 0.5);
-  // brass pole, twisted
-  ctx.fillStyle = "#a8842a"; ctx.fillRect(-1.6, -78, 3.2, 78);
-  ctx.strokeStyle = "#f0d070"; ctx.lineWidth = 0.8; for (let y = -76; y < 0; y += 5) { ctx.beginPath(); ctx.moveTo(-1.6, y + ((t * 20) % 5)); ctx.lineTo(1.6, y + 2.5 + ((t * 20) % 5)); ctx.stroke(); }
-  circle(ctx, 0, -78, 3.2, "#c9a54a"); circle(ctx, -0.8, -79, 1, "#fff6c0");
+  const bob = (e.bob || 0) * 5, ph = e.phase || 0, id = e.id || 0;
+  shadow(ctx, 16, 5.5, 0.55);
+  ellipse(ctx, 3, 1, 6, 2, "rgba(80,4,12,.7)"); // it drips where it stands
+  // the pole, tarnished and greasy, running straight through it
+  ctx.fillStyle = "#5a4418"; ctx.fillRect(-1.8, -80, 3.6, 80);
+  ctx.strokeStyle = "#a08038"; ctx.lineWidth = 0.8; for (let y = -78; y < 0; y += 5) { ctx.beginPath(); ctx.moveTo(-1.8, y + ((t * 20) % 5)); ctx.lineTo(1.8, y + 2.5 + ((t * 20) % 5)); ctx.stroke(); }
+  circle(ctx, 0, -80, 3.4, "#7a6020"); circle(ctx, -0.8, -81, 1, "#d8c080");
   ctx.save(); ctx.translate(0, -28 + bob);
   const dir = Math.cos(ph + Math.PI / 2) >= 0 ? 1 : -1; ctx.scale(dir, 1);
-  // legs mid-gallop; the paint is gone at the knees and something wet shows
   const g = Math.sin(ph * 4);
-  for (const [x0, a, back] of [[-9, 0.5 + g * 0.3, 1], [-6, 0.2 - g * 0.3, 1], [8, -0.6 + g * 0.4, 0], [11, -0.9 - g * 0.3, 0]]) {
+  // legs: thin, the joints bending the wrong way, one snapped and dangling
+  for (const [x0, a, back, broke] of [[-9, 0.5 + g * 0.3, 1, 0], [-6, 0.2 - g * 0.3, 1, 1], [8, -0.6 + g * 0.4, 0, 0], [11, -0.9 - g * 0.3, 0, 0]]) {
     ctx.save(); ctx.translate(x0, 3); ctx.rotate(a);
-    ctx.strokeStyle = back ? "#c8bca8" : "#efe6d6"; ctx.lineWidth = 3.2; ctx.lineCap = "round";
-    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, 8); ctx.lineTo(back ? -3 : 3, 14); ctx.stroke();
-    ctx.fillStyle = "#7a1828"; ctx.fillRect(-1.4, 6.5, 2.8, 2.4);
-    ctx.fillStyle = "#2a1a10"; ctx.fillRect(back ? -4.5 : 1.5, 13, 3, 2.4); // hoof
+    ctx.strokeStyle = back ? "#a89c88" : "#d8cebc"; ctx.lineWidth = 2.6; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    const kx = back ? 3.5 : -3.5;
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(kx, 7); ctx.lineTo(broke ? kx + 4 : 0, broke ? 10 : 14); ctx.stroke();
+    ctx.fillStyle = "#7a1020"; circle(ctx, kx, 7, 1.6, "#7a1020"); // the knee: paint gone, wet
+    if (broke) { ctx.strokeStyle = "#e8e0cc"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(kx + 4, 10); ctx.lineTo(kx + 6, 9); ctx.stroke(); }
+    else { ctx.fillStyle = "#1a100a"; ctx.fillRect(-1.6, 12.6, 3.2, 2.6); }
     ctx.restore();
   }
-  // body
-  ellipse(ctx, 0, 0, 15, 7.5, "#efe6d6");
-  ellipse(ctx, 0, 2.5, 13, 4, "rgba(0,0,0,.15)");
-  ctx.fillStyle = "#8a5a3a"; ctx.beginPath(); ctx.ellipse(-7, 1, 3.5, 2, 0.3, 0, TAU); ctx.fill(); // paint flaked to bare wood
-  ctx.fillStyle = "#9a2030"; ctx.beginPath(); ctx.ellipse(4, 3, 2.4, 1.6, 0, 0, TAU); ctx.fill(); // ...and not wood
-  // saddle and trappings
-  ctx.fillStyle = PAL.candyDark; ctx.beginPath(); ctx.ellipse(-1, -6, 7, 3.4, 0, Math.PI, TAU); ctx.fill(); ctx.fillRect(-8, -6, 14, 5);
-  ctx.fillStyle = PAL.bulb; ctx.fillRect(-8, -1.5, 14, 1.6);
-  for (let i = 0; i < 4; i++) circle(ctx, -6 + i * 4, 1.5, 0.9, i % 2 ? PAL.cyan : PAL.pink);
-  // tail
-  ctx.strokeStyle = "#6b2a8f"; ctx.lineWidth = 2.4; ctx.beginPath(); ctx.moveTo(-14, -2); ctx.quadraticCurveTo(-22, -2 + g * 3, -20, 9); ctx.stroke();
-  // neck and head thrown back
-  ctx.fillStyle = "#efe6d6"; ctx.beginPath(); ctx.moveTo(8, -3); ctx.lineTo(14, -19); ctx.lineTo(21, -15); ctx.lineTo(15, 1); ctx.fill();
-  ctx.save(); ctx.translate(19, -18); ctx.rotate(0.45 + g * 0.08);
-  ellipse(ctx, 0, 0, 5, 4.2, "#efe6d6");
-  ctx.fillStyle = "#efe6d6"; ctx.beginPath(); ctx.moveTo(2, -3); ctx.lineTo(11, -1); ctx.lineTo(11, 2); ctx.lineTo(2, 3); ctx.fill(); // muzzle
-  // the mouth: wide, red gums, real teeth
-  ctx.fillStyle = "#3a0606"; ctx.beginPath(); ctx.moveTo(4, 1.2); ctx.lineTo(12, 0.4); ctx.lineTo(12, 5 + g); ctx.lineTo(4, 3); ctx.fill();
-  ctx.fillStyle = "#b03040"; ctx.fillRect(4, 1, 8, 1);
-  ctx.fillStyle = "#f4ecd8"; for (let i = 0; i < 5; i++) { ctx.fillRect(5 + i * 1.5, 1.6, 1, 1.6); ctx.fillRect(5.2 + i * 1.5, 3.4 + g * 0.6, 1, 1.4); }
-  ctx.fillStyle = "rgba(140,10,20,.7)"; ctx.fillRect(9, 5 + g, 1, 3 + ((t * 3) % 2));
-  // the eye: rolled white, a red pupil, veins
-  circle(ctx, 0.5, -1.2, 2.1, "#fff"); circle(ctx, 1.2, -0.6, 0.8, "#c01020");
-  ctx.strokeStyle = "rgba(200,30,40,.6)"; ctx.lineWidth = 0.35; ctx.beginPath(); ctx.moveTo(-1.5, -1.2); ctx.lineTo(0, -0.8); ctx.moveTo(-1, 0); ctx.lineTo(0.4, -0.4); ctx.stroke();
-  // ear and mane
-  ctx.fillStyle = "#efe6d6"; ctx.beginPath(); ctx.moveTo(-2, -3); ctx.lineTo(-1, -8); ctx.lineTo(1, -3.5); ctx.fill();
+  // tail: lank human hair
+  ctx.strokeStyle = "#1a120c"; ctx.lineWidth = 1;
+  for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.moveTo(-14, -2); ctx.quadraticCurveTo(-21 - i, -1 + g * 3, -18 - i * 0.8, 10 + i); ctx.stroke(); }
+  // body: dirty bone-white, the paint flaking to bare wood
+  ellipse(ctx, 0, 0, 15, 7.5, "#d8cebc");
+  ellipse(ctx, 0, 2.5, 13, 4, "rgba(40,20,10,.25)");
+  ctx.fillStyle = "#6a4a2a"; ctx.beginPath(); ctx.ellipse(-9, -2, 3, 1.6, 0.3, 0, TAU); ctx.fill();
+  // ...and under the wood, not wood: a flayed flank, raw muscle, ribs
+  ctx.fillStyle = "#5a0610"; ctx.beginPath(); ctx.ellipse(3, 1.5, 7.5, 4.6, -0.1, 0, TAU); ctx.fill();
+  ctx.fillStyle = "#9a1828"; ctx.beginPath(); ctx.ellipse(3, 1.2, 6.4, 3.6, -0.1, 0, TAU); ctx.fill();
+  ctx.strokeStyle = "rgba(255,140,150,.35)"; ctx.lineWidth = 0.5; ctx.beginPath(); for (let i = 0; i < 5; i++) { ctx.moveTo(-2.5 + i * 2.6, -1.8); ctx.lineTo(-1.2 + i * 2.4, 4); } ctx.stroke();
+  ctx.strokeStyle = "#ece2cc"; ctx.lineWidth = 1; for (let i = 0; i < 4; i++) { const x = -1.5 + i * 2.6; ctx.beginPath(); ctx.moveTo(x, -2); ctx.quadraticCurveTo(x + 1.8, 0.8, x + 0.6, 4.2); ctx.stroke(); } // ribs, curving down out of the spine
+  ctx.strokeStyle = "#2a0206"; ctx.lineWidth = 0.6; ctx.beginPath(); ctx.ellipse(3, 1.5, 7.5, 4.6, -0.1, 0, TAU); ctx.stroke(); // torn edge
+  ctx.fillStyle = "#7a0a18"; ctx.fillRect(4, 5.5, 1, 4 + ((t * 2 + id) % 3)); ctx.fillRect(0, 5.8, 0.8, 2.5);
+  // saddle: rotted velvet, torn
+  ctx.fillStyle = "#5a0a1a"; ctx.beginPath(); ctx.ellipse(-3, -6, 6.5, 3.2, 0, Math.PI, TAU); ctx.fill(); ctx.fillRect(-9.5, -6, 13, 4);
+  ctx.fillStyle = "#8a7030"; ctx.fillRect(-9.5, -2.4, 13, 1.2);
+  ctx.fillStyle = "#1a0408"; ctx.beginPath(); ctx.moveTo(-5, -6); ctx.lineTo(-3, -2.4); ctx.lineTo(-1, -6); ctx.fill();
+  // the pole goes in through the back and out under the belly: a wet ring where it enters
+  ctx.fillStyle = "#5a4418"; ctx.fillRect(-1.8, -9, 3.6, 8);
+  ellipse(ctx, 0, -2, 3.4, 1.4, "#6e0714");
+  // neck and head: thrown back, too long, a skull under the paint
+  ctx.fillStyle = "#d8cebc"; ctx.beginPath(); ctx.moveTo(8, -3); ctx.lineTo(13, -21); ctx.lineTo(20, -18); ctx.lineTo(15, 1); ctx.fill();
+  ctx.strokeStyle = "rgba(60,40,30,.5)"; ctx.lineWidth = 0.5; ctx.beginPath(); for (let i = 0; i < 4; i++) { ctx.moveTo(10 + i * 1.2, -6 - i * 3.4); ctx.lineTo(16 + i * 0.6, -4 - i * 3.6); } ctx.stroke(); // neck tendons
+  ctx.save(); ctx.translate(18, -20); ctx.rotate(0.5 + g * 0.08);
+  ellipse(ctx, 0, 0, 5.2, 4.4, "#d8cebc");
+  ctx.fillStyle = "#d8cebc"; ctx.beginPath(); ctx.moveTo(2, -3.2); ctx.lineTo(12.5, -1.6); ctx.lineTo(12, 0.6); ctx.lineTo(2, 1.4); ctx.fill(); // upper muzzle
+  ctx.fillStyle = "#b8ac98"; ctx.beginPath(); ctx.moveTo(2, 2); ctx.lineTo(11, 4.5 + g * 1.2); ctx.lineTo(10.5, 6.4 + g * 1.2); ctx.lineTo(1.5, 4.2); ctx.fill(); // the jaw, dropped too far
+  // gums peeled back, a long row of human teeth top and bottom
+  const jy = 4.5 + g * 1.2;
+  ctx.fillStyle = "#1a0204"; ctx.beginPath(); ctx.moveTo(3, 1); ctx.lineTo(12, 0.4); ctx.lineTo(11, jy); ctx.lineTo(2.6, 3); ctx.fill();
+  ctx.fillStyle = "#c0303e"; ctx.fillRect(3, 0.2, 9, 1.2); ctx.beginPath(); ctx.moveTo(2.6, 3); ctx.lineTo(11, jy); ctx.lineTo(11, jy - 1); ctx.lineTo(2.6, 2.2); ctx.fill();
+  ctx.fillStyle = "#efe6cc"; for (let i = 0; i < 6; i++) { ctx.fillRect(3.4 + i * 1.4, 1.3, 1, 1.8); const by = 2.4 + (jy - 2.4) * (i / 6); ctx.fillRect(3.4 + i * 1.4, by - 1.4, 1, 1.4); }
+  ctx.fillStyle = "rgba(150,10,24,.85)"; ctx.fillRect(10, jy, 0.8, 3 + ((t * 3) % 3)); ctx.fillRect(7, jy - 0.4, 0.6, 2 + ((t * 2.3) % 2));
+  // nostril, and the eye: a black socket, a red pinprick that follows you
+  circle(ctx, 11.2, -1, 0.7, "#1a0204");
+  ctx.fillStyle = "#060203"; ctx.beginPath(); ctx.ellipse(0.6, -1, 2.4, 2, 0.2, 0, TAU); ctx.fill();
+  ctx.fillStyle = "#8a0a1c"; ctx.fillRect(0.4, 0.6, 0.6, 3); // a red run
+  circle(ctx, 1.2, -1, 0.55, "#ff3040"); glint(ctx, 1.2, -1, 1.4, "#ff4050", 0.9);
+  // ear, torn
+  ctx.fillStyle = "#d8cebc"; ctx.beginPath(); ctx.moveTo(-2, -3); ctx.lineTo(-1.5, -8.5); ctx.lineTo(0, -6); ctx.lineTo(1, -3.5); ctx.fill();
   ctx.restore();
-  for (let i = 0; i < 5; i++) circle(ctx, 11 + i * 1.6, -5 - i * 3, 2.3, i % 2 ? "#6b2a8f" : "#8a3ab0");
+  // mane: lank black hanks
+  ctx.strokeStyle = "#140c08"; ctx.lineWidth = 1.2;
+  for (let i = 0; i < 6; i++) { const x = 10 + i * 1.4, y = -3 - i * 3; ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x - 4, y + 2 + g, x - 3, y + 6); ctx.stroke(); }
+  glint(ctx, 0, 0, 10, "#d8cebc", 0.08);
   ctx.restore();
 };
 
 PROPS.cookie = function cookie(ctx, e, t) {
-  const b = Math.sin(t * 2.5 + (e.id || 0)) * 2, breathe = 1 + Math.sin(t * 1.6 + (e.id || 0)) * 0.04;
-  shadow(ctx, 9, 3.4, 0.5);
-  ctx.save(); ctx.translate(0, -11 + b); ctx.scale(breathe, breathe);
-  // steam: it is warm
-  ctx.strokeStyle = "rgba(220,200,255,.25)"; ctx.lineWidth = 1.2;
-  for (let i = -1; i <= 1; i++) { const o = (t * 8 + i * 5) % 12; ctx.beginPath(); ctx.moveTo(i * 4, -11 - o); ctx.quadraticCurveTo(i * 4 + 2, -14 - o, i * 4, -17 - o); ctx.stroke(); }
-  circle(ctx, 0, 0, 10.5, "#7a4a1e"); circle(ctx, 0, 0, 9.2, "#b8823e"); circle(ctx, -2, -2, 6, "#c89048");
-  for (let i = 0; i < 6; i++) circle(ctx, Math.cos(i * 2.3) * 6, Math.sin(i * 2.3) * 6, 1.3, "#3a1e0c");
-  ctx.strokeStyle = "#5a3416"; ctx.lineWidth = 0.6; ctx.beginPath(); ctx.moveTo(6, -6); ctx.lineTo(3, -2); ctx.lineTo(5, 1); ctx.stroke(); // a crack
-  // the icing face is yours: wide eyes, a scream
-  ctx.strokeStyle = "#ece0ff"; ctx.lineWidth = 1.2; ctx.lineCap = "round";
-  ctx.beginPath(); ctx.ellipse(-3, -2.4, 1.6, 2, 0, 0, TAU); ctx.moveTo(4.6, -2.4); ctx.ellipse(3, -2.4, 1.6, 2, 0, 0, TAU); ctx.stroke();
-  circle(ctx, -3, -2, 0.6, "#2a1030"); circle(ctx, 3, -2, 0.6, "#2a1030");
-  ctx.beginPath(); ctx.moveTo(-5, -5.5); ctx.lineTo(-1.5, -4.6); ctx.moveTo(5, -5.5); ctx.lineTo(1.5, -4.6); ctx.stroke();
-  ctx.fillStyle = "#2a1030"; ctx.beginPath(); ctx.ellipse(0, 3.2, 1.8, 2.6, 0, 0, TAU); ctx.fill(); ctx.stroke();
-  ctx.strokeStyle = "rgba(180,108,255,.8)"; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(-3, -0.4); ctx.lineTo(-3.2, 1.8); ctx.stroke(); // an icing tear
+  const id = e.id || 0, b = Math.sin(t * 2.5 + id) * 1.5, breathe = 1 + Math.sin(t * 1.6 + id) * 0.05;
+  shadow(ctx, 10, 3.8, 0.55);
+  ctx.save(); ctx.translate(0, -12 + b); ctx.scale(breathe, breathe);
+  // steam: it is warm, like something just taken out
+  ctx.strokeStyle = "rgba(200,170,255,.3)"; ctx.lineWidth = 1.2;
+  for (let i = -1; i <= 1; i++) { const o = (t * 8 + i * 5) % 12; ctx.beginPath(); ctx.moveTo(i * 4, -12 - o); ctx.quadraticCurveTo(i * 4 + 2, -15 - o, i * 4, -18 - o); ctx.stroke(); }
+  // the biscuit: burnt at the edge, a bite out of it
+  ctx.save();
+  ctx.beginPath(); ctx.arc(0, 0, 11.5, 0, TAU); ctx.arc(9, -8, 5.2, 0, TAU, true); ctx.clip("evenodd");
+  circle(ctx, 0, 0, 11.5, "#4a2a10"); circle(ctx, -0.5, -0.5, 10.3, "#a06a30"); circle(ctx, -2, -2, 7, "#b47a3c");
+  // the bite shows the inside: pink, wet, red jam that isn't
+  ctx.restore();
+  ctx.fillStyle = "#c04858"; ctx.beginPath(); ctx.arc(9, -8, 5.4, 2.0, 4.0); ctx.arc(9, -8, 4.2, 4.0, 2.0, true); ctx.fill();
+  ctx.fillStyle = "#7a0a18"; ctx.beginPath(); ctx.arc(9, -8, 5.4, 2.4, 3.6); ctx.lineTo(4, -3); ctx.fill();
+  ctx.fillRect(4.6, -4.5, 1, 4 + ((t * 1.7) % 3)); // dripping
+  // chips like scabs; one of them moves
+  for (let i = 0; i < 5; i++) { const a = i * 2.3 + 0.4; circle(ctx, Math.cos(a) * 8, Math.sin(a) * 7.5, 1.2, "#2a1206"); }
+  circle(ctx, -7 + Math.sin(t * 3 + id) * 0.8, 4 + Math.cos(t * 2.4) * 0.6, 0.8, "#1a0a04");
+  // the face pressed into the dough. It is yours: eyes wide, mouth stretched in a scream
+  ellipse(ctx, -0.5, 0.5, 6.6, 7.6, "#d8b48a");
+  ctx.strokeStyle = "rgba(60,30,10,.6)"; ctx.lineWidth = 0.6; ctx.beginPath(); ctx.ellipse(-0.5, 0.5, 6.6, 7.6, 0, 0, TAU); ctx.stroke();
+  const look = Math.sin(t * 0.9 + id) > 0.3 ? 0.7 : Math.sin(t * 0.9 + id) < -0.5 ? -0.7 : 0; // darting
+  for (const sx of [-1, 1]) {
+    const ex = -0.5 + sx * 2.7, ey = -2;
+    ctx.fillStyle = "#3a1a0a"; ctx.beginPath(); ctx.ellipse(ex, ey, 2.3, 2.5, 0, 0, TAU); ctx.fill(); // sunken socket
+    ellipse(ctx, ex, ey, 1.7, 1.9, "#f4ecdc"); // real, wet
+    circle(ctx, ex + look, ey + 0.2, 0.85, "#3a2a1a"); circle(ctx, ex + look, ey + 0.2, 0.4, "#000");
+    circle(ctx, ex + look - 0.3, ey - 0.3, 0.25, "#fff");
+    glint(ctx, ex, ey, 1.4, "#e8dcff", 0.55);
+  }
+  // purple icing tears, and brows drawn up in icing
+  ctx.strokeStyle = "#c88cff"; ctx.lineWidth = 0.8; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(-5.5, -5.6); ctx.lineTo(-2, -4.8); ctx.moveTo(4.5, -5.6); ctx.lineTo(1, -4.8); ctx.moveTo(-3.4, 0); ctx.lineTo(-3.6, 3.2); ctx.moveTo(2.2, 0); ctx.lineTo(2.4, 2.4); ctx.stroke();
+  // the mouth: torn open in the dough, teeth set in it, icing stitches across that didn't hold
+  const mo = 1 + Math.sin(t * 2 + id) * 0.15;
+  ctx.fillStyle = "#1a0408"; ctx.beginPath(); ctx.ellipse(-0.5, 4, 2.6, 2.8 * mo, 0, 0, TAU); ctx.fill();
+  ctx.fillStyle = "#efe6cc"; for (let i = -1; i <= 1; i++) { ctx.fillRect(-0.9 + i * 1.3, 1.6, 0.8, 1); ctx.fillRect(-0.9 + i * 1.3, 5.6 * mo, 0.8, 0.9); }
+  ctx.strokeStyle = "#c88cff"; ctx.lineWidth = 0.5; ctx.beginPath(); for (let i = -1; i <= 1; i++) { ctx.moveTo(-1 + i * 1.6, 1.2); ctx.lineTo(-0.4 + i * 1.6 + (i === 0 ? 0 : 0.6), 2.2); } ctx.stroke();
+  ctx.fillStyle = "#8a0a1c"; ctx.fillRect(0.6, 6.4, 0.7, 2.2 + ((t * 1.3) % 2));
+  // a crack through it all, seeping
+  ctx.strokeStyle = "#2a1206"; ctx.lineWidth = 0.7; ctx.beginPath(); ctx.moveTo(-10, -4); ctx.lineTo(-6.5, -3); ctx.lineTo(-7.5, 1); ctx.stroke();
+  glint(ctx, 0, 0, 6, "#b46cff", 0.18);
   ctx.restore();
 };
 
