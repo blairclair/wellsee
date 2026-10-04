@@ -692,19 +692,35 @@
     escort: { arms: [[PSH[0], [-70, -330], [-40, -262]], [PSH[1], [10, -330], [-26, -268]]] },
     grab: { arms: [[PSH[0], [-54, -290], [-52, -150]], [PSH[1], [96, -360], [150, -330]]] },
     offer: { arms: [[PSH[0], [30, -320], [120, -300]], [PSH[1], [90, -330], [150, -310]]] },
-    clap: { arms: [[PSH[0], [50, -330], [70, -380]], [PSH[1], [90, -340], [76, -386]]] }
+    clap: { arms: [[PSH[0], [50, -330], [70, -380]], [PSH[1], [90, -340], [76, -386]]] },
+    /* crouch-hover (p48): squatting low, hands open close to someone small without touching.
+       dy frame: legs and arms are given in the lowered frame (shoulders at -415 + dy). */
+    crouch: { dy: 138, lean: 8, legs: [[[-18, -120], [62, -112], [-6, -14]], [[18, -120], [92, -100], [44, -14]]],
+      arms: [[[-40, -277], [30, -214], [112, -190]], [[40, -277], [118, -236], [184, -214]]] },
+    /* arm-on-shoulder (p54): the near hand resting on the shoulder of someone beside it at +x */
+    shoulder: { arms: [[PSH[0], [-54, -290], [-52, -150]], [PSH[1], [100, -392], [128, -306]]] }
   };
   R.player = function (k, o) {
     o = o || {};
     var v = PLAYER_SUITS[(o.variant || 0) % 3], pose = typeof o.pose === "object" ? o.pose : (R.PPOSE[o.pose || "stand"] || R.PPOSE.stand);
-    var lean = o.lean || 0, hipP = [0, -258];
+    /* pose.dy lowers the body (crouch); pose.legs, pose.arms are then in the lowered frame */
+    var pdy = pose.dy || 0, lean = o.lean != null ? o.lean : (pose.lean || 0), hipP = [0, -258 + pdy];
     var Rt = function (p) { return rot(p, lean, hipP); };
-    var arms = (o.arms || pose.arms).map(function (a) { return a.map(Rt); });
-    var lw = o.lw || 4, s = "";
+    /* joints 0..1 bends elbows and knees the wrong way: the middle point is reflected across
+       the line from the root to the end (1 = fully reversed); knees also kick back */
+    var jn = o.joints || 0;
+    function wrongBend(A, kick) {
+      if (!jn) return A;
+      var a = A[0], b = A[2], m = A[1], vx = b[0] - a[0], vy = b[1] - a[1], L2 = vx * vx + vy * vy || 1;
+      var t = ((m[0] - a[0]) * vx + (m[1] - a[1]) * vy) / L2, q = [a[0] + vx * t, a[1] + vy * t];
+      return [a, [m[0] + 2 * jn * (q[0] - m[0]) - (kick || 0) * jn, m[1] + 2 * jn * (q[1] - m[1])], b];
+    }
+    var arms = (o.arms || pose.arms).map(function (a) { return wrongBend(a.map(Rt)); });
+    var lw = o.lw || 4, s = "", organic = o.tube !== false;
     /* legs */
-    var legs = o.legs || [[[-18, -258], [-24, -130], [-28, -14]], [[18, -258], [24, -130], [30, -14]]];
+    var legs = (o.legs || pose.legs || [[[-18, -258], [-24, -130], [-28, -14]], [[18, -258], [24, -130], [30, -14]]]).map(function (L) { return wrongBend(L, 22); });
     legs.forEach(function (L) {
-      s += limb(L, 26, v.a, lw);
+      s += organic ? tube(L, 30, 21, v.a, lw, { bulge: 2, shade: L[2][0] > L[0][0] ? 1 : -1 }) : limb(L, 26, v.a, lw);
       var ft = L[2];
       s += '<ellipse cx="' + f(ft[0] + 18) + '" cy="' + f(ft[1] + 4) + '" rx="36" ry="12" fill="#2a0c0e" stroke="' + INK + '" stroke-width="' + lw + '"/>';
     });
@@ -714,10 +730,10 @@
       '<g clip-path="url(#' + cid + ')">' + [-48, -16, 16, 48].map(function (x) { return '<rect x="' + (x - 8) + '" y="-440" width="16" height="200" fill="' + v.b + '" opacity=".8"/>'; }).join("") +
       R.tone(k, "M-80,-440 L-20,-440 L-20,-240 L-80,-240Z", .4) + "</g>" + P(torso, "none", INK, lw) +
       [-385, -340, -295].map(function (y) { return '<circle cx="0" cy="' + y + '" r="8" fill="' + v.b + '" stroke="' + INK + '" stroke-width="2.5"/>'; }).join("");
-    s += '<g transform="rotate(' + f(lean) + ' 0 -258)">' + tg + "</g>";
+    s += '<g transform="rotate(' + f(lean) + " 0 " + f(-258 + pdy) + ')"><g transform="translate(0,' + pdy + ')">' + tg + "</g></g>";
     /* arms + gloves */
     arms.forEach(function (A) {
-      s += limb(A, 18, v.a, lw);
+      s += organic ? tube(A, 22, 15, v.a, lw, { bulge: 1.5 }) : limb(A, 18, v.a, lw);
       var hd = A[2], el = A[1], ang = Math.atan2(hd[1] - el[1], hd[0] - el[0]);
       if (A === arms[1] && (o.pose === "wave")) ang = -Math.PI / 2;
       var fingers = "";
@@ -730,15 +746,15 @@
       s += fingers + '<circle cx="' + f(hd[0]) + '" cy="' + f(hd[1]) + '" r="14" fill="#efe9da" stroke="' + INK + '" stroke-width="' + lw + '"/>';
     });
     /* ruff */
-    var nk = Rt([0, -432]), ruff = "";
+    var nk = Rt([0, -432 + pdy]), ruff = "";
     for (var i = 0; i <= 20; i++) {
       var a = i / 20 * Math.PI * 2, r = i % 2 ? 30 : 50;
       ruff += (i ? " L" : "M") + f(nk[0] + Math.cos(a) * r) + "," + f(nk[1] + Math.sin(a) * r * .42);
     }
     s += P(ruff + "Z", "#ece4d0", INK, 3);
     /* head */
-    var hc = Rt([4, -478]);
-    s += R.playerHead(k, { x: hc[0], y: hc[1], s: .62, rot: lean + (o.headTilt || 0), variant: o.variant, glow: o.glow, grin: o.grin, hat: o.hat });
+    var hc = Rt([4, -478 + pdy]);
+    s += R.playerHead(k, { x: hc[0], y: hc[1], s: .62, rot: lean + (o.headTilt || 0), variant: o.variant, glow: o.glow, grin: o.grin, hat: o.hat, paint: o.paint, mouth2: o.mouth2, pin: o.pin });
     return '<g ' + T(o) + (o.op != null ? ' opacity="' + o.op + '"' : "") + ">" + s + "</g>";
   };
   /* R.playerHead(k, o): face center 0,0, ~130 tall plus hat; o.grin 0..1 (1 = open with teeth). */
@@ -750,7 +766,10 @@
       s += P(R.fur(sd * 40, -18, 20, 24, 14, .35, sd + 3), v.hair, INK, 3);
     });
     var face = "M-36,-14 C-38,-58 -18,-74 0,-74 C18,-74 38,-58 36,-14 C36,28 22,58 0,64 C-22,58 -36,28 -36,-14Z";
-    s += P(face, "#f1ebde", INK, 3.5);
+    var grey = o.paint === "grey";
+    s += P(face, grey ? "#cfcbc1" : "#f1ebde", INK, 3.5);
+    if (grey) s += R.tone(k, "M-40,-80 L40,-80 L40,70 L-40,70Z", .12) +
+      P("M-12,-70 l3,12 l-5,9 M30,-30 l-7,4 l2,9 l-6,6 M-34,0 l7,5 l-1,8", "none", INK, 1, 'opacity=".5"');
     s += R.tone(k, "M14,-74 C30,-60 40,-30 36,-10 C36,28 22,58 0,64 L40,70 L40,-80Z", .25);
     /* cracks */
     s += P("M-30,-40 l8,6 l-2,9 l7,5 M22,-56 l-4,10 l6,6 M10,40 l6,-6 l7,3 M-26,24 l9,2", "none", INK, 1.2, 'opacity=".55"');
@@ -758,7 +777,8 @@
     [-1, 1].forEach(function (sd) {
       var ex = sd * 15, ey = -16;
       s += P("M" + ex + "," + (ey - 26) + " L" + (ex + 10) + "," + ey + " L" + ex + "," + (ey + 24) + " L" + (ex - 10) + "," + ey + "Z", INK);
-      s += '<circle cx="' + ex + '" cy="' + ey + '" r="7" fill="' + g + '" opacity=".25"/><circle cx="' + ex + '" cy="' + ey + '" r="2.2" fill="' + g + '"/>';
+      if (o.pin) s += '<circle cx="' + ex + '" cy="' + ey + '" r="1.3" fill="' + (o.glow || "#fff") + '"/>';
+      else s += '<circle cx="' + ex + '" cy="' + ey + '" r="7" fill="' + g + '" opacity=".25"/><circle cx="' + ex + '" cy="' + ey + '" r="2.2" fill="' + g + '"/>';
     });
     s += P("M-26,-50 Q-15,-60 -4,-50 M4,-50 Q15,-60 26,-50", "none", INK, 2.5);
     /* painted grin */
@@ -768,6 +788,11 @@
       var teeth = ""; for (var i = -18; i <= 18; i += 6) teeth += "M" + i + "," + f(22 + Math.abs(i) * -.15) + " l0,6 ";
       s += P(teeth, "none", "#e9e1cf", 2);
     } else s += P("M-22,20 C-10,30 10,30 22,20", "none", INK, 3);
+    if (o.mouth2) {
+      /* the real mouth: small, human, down-turned, showing below and off-centre from the paint */
+      s += P("M-4,47 C1,44 9,44 15,48 C9,52 1,52 -4,47Z", "#7b4a44", INK, 1.6) + P("M-4,47 C2,49 9,49 15,48", "none", INK, 1.4) +
+        P("M-6,50 l-3,3 M17,50 l3,3", "none", INK, 1, 'opacity=".6"');
+    }
     s += '<circle cx="0" cy="2" r="9" fill="#b3141c" stroke="' + INK + '" stroke-width="2.5"/><circle cx="-3" cy="-1" r="2.5" fill="#fff" opacity=".7"/>';
     /* hat */
     if (o.hat !== false) {
@@ -1082,5 +1107,75 @@
     }
     s += '<g transform="translate(' + f(2 + ht * 4) + "," + f(-356 + hunch * 1.25) + ') scale(.54)">' + hd + "</g>";
     return '<g ' + T(o) + (o.op != null ? ' opacity="' + o.op + '"' : "") + ">" + s + "</g>";
+  };
+
+  /* ---------- creepy rendering helpers (no feTurbulence: phone performance) ---------- */
+  function rng(seed) { var x = Math.abs(Math.round((seed || 1) * 9301)) % 2147483646 + 1; return function () { x = x * 16807 % 2147483647; return (x - 1) / 2147483646; }; }
+  R.rng = rng;
+  /* R.hatch(k, d, o): fill path d with parallel ink hatching (one pattern per call).
+     o = {angle:-35, gap:8, w:1.6, color:INK, op:.5, cross:false} */
+  R.hatch = function (k, d, o) {
+    o = o || {};
+    var id = k.uid("hatch"), g = o.gap || 8, c = o.color || INK, w = o.w || 1.6;
+    var pat = '<pattern id="' + id + '" width="' + g + '" height="' + g + '" patternUnits="userSpaceOnUse" patternTransform="rotate(' + (o.angle == null ? -35 : o.angle) + ')">' +
+      '<line x1="0" y1="0" x2="0" y2="' + g + '" stroke="' + c + '" stroke-width="' + w + '"/>' +
+      (o.cross ? '<line x1="0" y1="0" x2="' + g + '" y2="0" stroke="' + c + '" stroke-width="' + f(w * .8) + '"/>' : "") + "</pattern>";
+    return "<defs>" + pat + "</defs>" + P(d, "url(#" + id + ")", null, 0, 'opacity="' + (o.op == null ? .5 : o.op) + '"');
+  };
+  /* R.spatter(cx, cy, r, o): a seeded blood/paint spatter. o = {n:14, color:"#5a0f0e", seed:1, drips:0, op:.9} */
+  R.spatter = function (cx, cy, r, o) {
+    o = o || {};
+    var rnd = rng(o.seed || 1), c = o.color || "#5a0f0e", n = o.n || 14, s = "";
+    s += '<ellipse cx="' + f(cx) + '" cy="' + f(cy) + '" rx="' + f(r * .42) + '" ry="' + f(r * .34) + '" fill="' + c + '"/>';
+    for (var i = 0; i < n; i++) {
+      var a = rnd() * Math.PI * 2, d = r * (.3 + rnd() * .9), rr = r * (.03 + rnd() * .1) * (1.2 - d / r * .7);
+      s += '<circle cx="' + f(cx + Math.cos(a) * d) + '" cy="' + f(cy + Math.sin(a) * d * .8) + '" r="' + f(Math.max(.8, rr)) + '" fill="' + c + '"/>';
+      if (rnd() < .3) s += P("M" + f(cx + Math.cos(a) * r * .3) + "," + f(cy + Math.sin(a) * r * .24) + " L" + f(cx + Math.cos(a) * d) + "," + f(cy + Math.sin(a) * d * .8), "none", c, Math.max(.8, rr * .7));
+    }
+    for (var j = 0; j < (o.drips || 0); j++) {
+      var dx = cx + (rnd() - .5) * r * .7, len = r * (.4 + rnd() * .9), dw = r * (.04 + rnd() * .04);
+      s += P("M" + f(dx - dw) + "," + f(cy) + " L" + f(dx - dw * .7) + "," + f(cy + len) + " a" + f(dw) + "," + f(dw) + " 0 0 0 " + f(dw * 1.6) + ",0 L" + f(dx + dw) + "," + f(cy) + "Z", c);
+    }
+    return '<g opacity="' + (o.op == null ? .9 : o.op) + '">' + s + "</g>";
+  };
+  /* R.dryBrush(pts, w, color, o): a dry-brush stroke along pts: n broken parallel bristle lines
+     spread over width w. o = {n:7, seed:1, op:.85} */
+  R.dryBrush = function (pts, w, color, o) {
+    o = o || {};
+    var rnd = rng(o.seed || 1), n = o.n || 7, s = "", sp = crSample(pts, 8);
+    for (var i = 0; i < n; i++) {
+      var off = (i / Math.max(1, n - 1) - .5) * w, line = [];
+      for (var j = 0; j < sp.length; j++) {
+        var a = sp[Math.max(0, j - 1)], b = sp[Math.min(sp.length - 1, j + 1)], tx = b[0] - a[0], ty = b[1] - a[1], m = Math.hypot(tx, ty) || 1;
+        line.push([sp[j][0] - ty / m * off, sp[j][1] + tx / m * off]);
+      }
+      var dash = f(10 + rnd() * 40) + " " + f(2 + rnd() * 14) + " " + f(6 + rnd() * 30) + " " + f(3 + rnd() * 10);
+      s += P(smooth(line), "none", color, f(w / n * (.5 + rnd() * .7)), 'stroke-linecap="round" stroke-dasharray="' + dash + '" stroke-dashoffset="' + f(rnd() * 40) + '"');
+    }
+    return '<g opacity="' + (o.op == null ? .85 : o.op) + '">' + s + "</g>";
+  };
+  /* R.wrongShadow(k, markup, o): a flat silhouette of markup (any svg) cast as a shadow that is
+     a little wrong. o = {x, y (shadow origin, e.g. the feet), skew:-30, stretch:1.1 (x),
+     squash:.45 (y), color:INK, op:.6, extra: svg drawn only in the shadow (too-long fingers)} */
+  R.wrongShadow = function (k, markup, o) {
+    o = o || {};
+    var id = k.uid("wsh"), x = o.x || 0, y = o.y || 0;
+    var flt = '<defs><filter id="' + id + '" x="-50%" y="-50%" width="200%" height="200%"><feFlood flood-color="' + (o.color || INK) + '"/><feComposite in2="SourceAlpha" operator="in"/></filter></defs>';
+    return flt + '<g opacity="' + (o.op == null ? .6 : o.op) + '" filter="url(#' + id + ')" transform="translate(' + f(x) + "," + f(y) + ") skewX(" + f(o.skew == null ? -30 : o.skew) + ") scale(" + f(o.stretch || 1.1) + "," + f(o.squash == null ? .45 : o.squash) + ") translate(" + f(-x) + "," + f(-y) + ')">' + markup + (o.extra || "") + "</g>";
+  };
+  /* R.grain(k, w, h, op): fine irregular film grain over a w x h panel (one dot tile). */
+  R.grain = function (k, w, h, op) {
+    var id = k.uid("grain"), rnd = rng(7), d = "";
+    for (var i = 0; i < 26; i++) d += '<circle cx="' + f(rnd() * 31) + '" cy="' + f(rnd() * 31) + '" r="' + f(.4 + rnd() * .9) + '" fill="' + (i % 3 ? INK : "#fff") + '"/>';
+    return '<defs><pattern id="' + id + '" width="31" height="31" patternUnits="userSpaceOnUse">' + d + '</pattern></defs><rect width="' + w + '" height="' + h + '" fill="url(#' + id + ')" opacity="' + (op == null ? .18 : op) + '" pointer-events="none"/>';
+  };
+  /* R.darkEdges(k, w, h, o): a heavier, uneven darkening toward the panel edges and corners.
+     o = {color:"#000", inner:.45 (where the darkening starts, 0..1), op:.85} */
+  R.darkEdges = function (k, w, h, o) {
+    o = o || {};
+    var id = k.uid("dedge"), c = o.color || "#000", inr = o.inner == null ? .45 : o.inner;
+    return '<defs><radialGradient id="' + id + '" cx="50%" cy="46%" r="75%"><stop offset="' + inr + '" stop-color="' + c + '" stop-opacity="0"/><stop offset="' + f(inr + (1 - inr) * .55) + '" stop-color="' + c + '" stop-opacity=".45"/><stop offset="1" stop-color="' + c + '" stop-opacity="1"/></radialGradient></defs>' +
+      '<rect width="' + w + '" height="' + h + '" fill="url(#' + id + ')" opacity="' + (o.op == null ? .85 : o.op) + '" pointer-events="none"/>' +
+      P("M0,0 L" + w + ",0 L" + w + "," + f(h * .06) + " C" + f(w * .7) + "," + f(h * .02) + " " + f(w * .3) + "," + f(h * .07) + " 0," + f(h * .03) + "Z", c, null, 0, 'opacity="' + f((o.op == null ? .85 : o.op) * .5) + '"');
   };
 })(typeof window !== "undefined" ? window : globalThis);
