@@ -664,6 +664,14 @@ kbd.pad { border-radius: 10px; color: var(--cyan); border-color: #7af0ff55; }
   .fin-text { font-size: .72rem; white-space: nowrap; }
   .fin-pips i { width: 8px; height: 11px; }
   .fin-work { height: 3px; }
+  /* pockets: smaller booth, tucked closer to the thumbs */
+  .slot { width: 42px; height: 46px; padding-top: 3px; }
+  .slot.sel { width: 60px; height: 68px; padding-top: 15px; }
+  .slot.sel canvas { width: 30px !important; height: 30px !important; }
+  .slot .awning { height: 16px; top: -5px; }
+  .slot.sel .slot-key, .slot.sel .uses { top: 15px; }
+  .slot-name, .slot.sel .slot-name { font-size: .55rem; }
+  #ui:has(.touch:not([hidden])) .hud-bottom { bottom: 9.6rem; }
 }
 @media (max-height: 560px) {
   .marquee { padding: .9rem 1rem; }
