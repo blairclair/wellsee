@@ -275,6 +275,7 @@ kbd.pad { border-radius: 10px; color: var(--cyan); border-color: #7af0ff55; }
 .c-num { font-family: var(--caps); font-size: .72rem; letter-spacing: .25em; color: #a89a80; }
 .c-name { font-family: var(--caps); font-size: 1.4rem; color: var(--gold); letter-spacing: .05em; line-height: 1.1; }
 .c-tag { font-style: italic; color: var(--pink); font-size: .95rem; margin-top: -.15rem; }
+.c-reward { display: block; color: #9dff6a; font-size: .85rem; font-weight: 700; letter-spacing: .02em; }
 .c-stats { display: flex; flex-direction: column; gap: .15rem; margin: .2rem 0; }
 .c-row { display: flex; justify-content: space-between; align-items: center; font-family: var(--caps); font-size: .82rem; letter-spacing: .1em; color: #a89a80; }
 .pips { display: flex; gap: 4px; }

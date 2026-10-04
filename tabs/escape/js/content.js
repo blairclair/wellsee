@@ -205,7 +205,7 @@ function arthurUpdate(e, api, dt, stunned) {
     if (e.charge > d.flashLock) e.aim = Math.atan2(dy, dx);
     e.face = e.aim;
     if (e.charge <= 0) {
-      e.charge = 0; e.cool = d.flashEvery * (0.85 + Math.random() * 0.3);
+      e.charge = 0; e.cool = (api.level.flashEvery || d.flashEvery) * (0.85 + Math.random() * 0.3);
       const off = Math.abs(wrapAngle(Math.atan2(dy, dx) - e.aim));
       const hit = dist < d.flashRange && off < d.flashCone + Math.atan2(p.r, Math.max(dist, 1)) &&
         p.invuln <= 0 && api.los(e.x, e.y, p.x, p.y);
@@ -500,6 +500,8 @@ export const LEGEND = {
  * length/threat (1-5) are shown on the route map; hazards & loot are
  * computed from the map automatically.
  * palette: hints for art (floor tint, fog colour).
+ * reward: optional { text, heal, sanity, toast } applied on leaving the zone, shown on its route card.
+ * flashEvery: optional override of Arthur's reload time in this zone.
  */
 /* LEVELS may also have init(api) (once, after spawns) and update(api, dt) (every
  * frame before entities): the finale uses them to set up game.finale and the gate. */
@@ -575,7 +577,9 @@ export const LEVELS = {
     name: "The Petting Pen", tag: "long, and something is feeding",
     blurb: "The long way round, through the pens. The rabbits were sweet once. There is food left in the troughs, and things worth carrying. It takes time. Time is what the tents want.",
     base: "grass", ambient: 0.86, length: 4, threat: 2,
-    pressure: { every: 32, max: 4, types: ["unwilling", "eli", "unwilling"] },
+    // the slow branch: fewer tent flaps opening, and you leave it fed (see reward)
+    pressure: { every: 60, max: 2, types: ["unwilling", "eli", "unwilling"] },
+    reward: { text: "Leave fed and mended: +35 health, +25 sanity, weapons restored", heal: 35, sanity: 25, mend: true, toast: "You leave the pens fed on trough-food, your weapons bound up with fence wire. It tastes of nothing. You feel stronger." },
     palette: { fog: "#1c2a10", tint: "#9dff6a" },
     map: [
       "################################################################################",
@@ -584,7 +588,7 @@ export const LEVELS = {
       '#""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""#',
       '#"""""============="""""============="""""======"======"""""=============""""""#',
       '#"""""="""""""""""="""""="""""""""""="""""="""""""""""="""""="""""""""""=""""""#',
-      '#"""""=""c""""""""="""""="""""""""""="""""=""""""""p""="""""="""""""""a"=""""""#',
+      '#"""""=""c""""""""="""""="""""H"""""="""""=""""""""p""="""""="""""""""a"=""""""#',
       '#"""""="""""""""""="""""""""""""""""="""""="""""""""""="""""="""""""""""=""""""#',
       '#"""""="""""""r"""="""""="""""""""""="""""="""""r"""""="""""="""r"""""""=""""""#',
       '#"""""="""""""""""="""""=""""""""o""="""""="""""""""""="""""="""""""""""=""""""#',
@@ -716,8 +720,8 @@ export const LEVELS = {
   gallery: {
     name: "The Portrait Gallery", tag: "hold still",
     blurb: "Arthur Benning's gallery. The lit hall is quick and it is his: when the camera comes up, get behind something or get out of the way. The dark rooms either side are long, full of supplies, and full of the Unwilling, posed and patient. One flash and every one of them turns.",
-    base: "dirt", ambient: 0.9, length: 3, threat: 4,
-    pressure: { every: 18, max: 6, types: ["unwilling", "eli", "unwilling"] },
+    base: "dirt", ambient: 0.9, length: 3, threat: 4, flashEvery: 3.6, // Arthur reloads faster in his own hall
+    pressure: { every: 15, max: 6, types: ["unwilling", "eli", "unwilling"] },
     palette: { fog: "#241a10", tint: "#fff2c8" },
     map: [
       "##############################################################################",
@@ -730,11 +734,11 @@ export const LEVELS = {
       "#.............#...........#...........#...........#.H.........#...........#..#",
       "#.............#...........#...........#...........#...........#...........#..#",
       "########.########.########.########.########.########.########.########.######",
-      "#.....l.........l.........l.........l.........l...C.....l.........l..........#",
+      "#.....l.........l.........l.........l.........l...C.....l.........l.C........#",
       "#.................................................................u.........X#",
       "#.S.....................................A...............j...................X#",
       "#.............................k.............................................X#",
-      "#..........l.........l.........l.........l.........l.........C.........l.....#",
+      "#..........l.........l..C......l.........l..C......l.........C.........l.....#",
       "############.########.########.########.########.########.########.########.##",
       "#.........#...........#...........#...........#...........#...........#......#",
       "#.........#...........#...........#...........#...........#...........#......#",

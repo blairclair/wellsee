@@ -138,7 +138,7 @@ export function summarizeLevel(levelId) {
     if (lg.tile === "water") hazards.water = 1;
   }
   if (def.pressure) for (const t of def.pressure.types) foes[t] = foes[t] || 0;
-  return { id: levelId, name: def.name, tag: def.tag, blurb: def.blurb, length: def.length, threat: def.threat, loot, hazards, foes, final: !!def.final };
+  return { id: levelId, name: def.name, tag: def.tag, blurb: def.blurb, length: def.length, threat: def.threat, reward: def.reward ? def.reward.text : "", loot, hazards, foes, final: !!def.final };
 }
 
 /* ================================================================ tiles */
@@ -510,6 +510,12 @@ export function update(game, dt) {
   /* ---- exit ---- */
   if (!game.outcome && TILES[tileAt(game, Math.floor(p.x / TILE), Math.floor(p.y / TILE))].exit) {
     game.outcome = { type: "exit" };
+    const rw = game.level.reward;
+    if (rw) {
+      if (rw.heal) api.heal(rw.heal); if (rw.sanity) api.sanity(rw.sanity);
+      if (rw.mend) for (const w of run.inventory) if (WEAPONS[w.id]) w.uses = Math.max(w.uses, WEAPONS[w.id].uses);
+      if (rw.toast) api.toast(rw.toast);
+    }
     game.events.push({ type: "exit", x: p.x, y: p.y });
   }
   input.pressed.delete("confirm");

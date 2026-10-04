@@ -132,7 +132,7 @@ def pen():
     m.rect(1, 12, 78, 13, "~"); m.rect(28, 11, 50, 14, "~")
     # rabbits in pens, food in troughs
     m.pts("r", (14, 8), (48, 8), (36, 19), (40, 12), (64, 8))
-    m.pts("c", (9, 6)); m.pts("o", (33, 9)); m.pts("p", (51, 6)); m.pts("a", (70, 6)); m.pts("b", (21, 19)); m.pts("g", (39, 17)); m.pts("a", (60, 20))
+    m.pts("c", (9, 6)); m.pts("o", (33, 9)); m.pts("H", (30, 6)); m.pts("p", (51, 6)); m.pts("a", (70, 6)); m.pts("b", (21, 19)); m.pts("g", (39, 17)); m.pts("a", (60, 20))
     # lamps along the north lane
     for x in (10, 26, 44, 60, 74): m.set(x, 1, "l")
     m.pts("f", (4, 13))
@@ -217,7 +217,7 @@ def gallery():
     # hall: lamps, Arthur, a cookie
     for x in range(6, 76, 10): m.set(x, 10, "l"); m.set(x + 5, 14, "l")
     m.pts("A", (40, 12)); m.pts("k", (30, 13)); m.pts("j", (56, 12)); m.pts("u", (66, 11))
-    m.pts("C", (50, 10), (61, 14))  # two portraits posed in the hall itself
+    m.pts("C", (24, 14), (44, 14), (50, 10), (61, 14), (68, 10))  # portraits posed in the hall itself
     # rooms: posed figures, loot
     m.pts("C", (20, 3), (44, 6), (58, 3), (22, 20), (46, 18), (64, 22))
     m.pts("G", (6, 5)); m.pts("f", (4, 19)); m.pts("a", (30, 2), (62, 20)); m.pts("H", (52, 7)); m.pts("b", (34, 22)); m.pts("p", (70, 2)); m.pts("o", (56, 23))

@@ -406,7 +406,7 @@ export function createUI(root, H) {
       const card = h("button", "choice" + (s.final ? " final" : ""));
       card.dataset.id = id;
       card.innerHTML = `<span class="c-num">${ids.length > 1 ? "Path " + "ABC"[idx] : "The only way"}</span>
-        <span class="c-name">${esc(s.name)}</span><span class="c-tag">${esc(s.tag)}</span>
+        <span class="c-name">${esc(s.name)}</span><span class="c-tag">${esc(s.tag)}</span>${s.reward ? `<span class="c-reward">${esc(s.reward)}</span>` : ""}
         <span class="c-stats"><span class="c-row"><span>Length</span><span class="pips">${pips(s.length, "len")}</span></span>
         <span class="c-row"><span>Threat</span><span class="pips">${pips(s.threat, "thr")}</span></span></span>
         <span class="c-blurb">${esc(s.blurb)}</span>
