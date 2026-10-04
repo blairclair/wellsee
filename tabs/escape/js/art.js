@@ -27,6 +27,7 @@ import { TILE_ART, TILE_FX, prerenderLevel } from "./art/tiles.js";
 import { PEOPLE, glints, guestGhost } from "./art/figures.js";
 import { ICONS, PROPS } from "./art/props.js";
 import { bigFace } from "./art/face.js";
+import { runZone } from "./art/zones/index.js";
 
 export { TILE_ART, TILE_FX, ICONS, prerenderLevel };
 
@@ -500,6 +501,8 @@ export function render(ctx, game, cam, view) {
 
   // floor & walls: blit only the visible part of the prerendered level
   const vw = W / z, vh = H / z, mw = game.w * TILE, mh = game.h * TILE;
+  const zbox = { x0: camX - TILE, y0: camY - TILE, x1: camX + vw + TILE, y1: camY + vh + TILE };
+  runZone(game, "backdrop", ctx, game, t, view, zbox);
   const bx0 = clamp(camX - 2, 0, mw), by0 = clamp(camY - 2, 0, mh), bx1 = clamp(camX + vw + 2, 0, mw), by1 = clamp(camY + vh + 2, 0, mh);
   ctx.imageSmoothingEnabled = true;
   if (bx1 > bx0 && by1 > by0) ctx.drawImage(pre.canvas, bx0 * pre.scale, by0 * pre.scale, (bx1 - bx0) * pre.scale, (by1 - by0) * pre.scale, bx0, by0, bx1 - bx0, by1 - by0);
@@ -517,6 +520,8 @@ export function render(ctx, game, cam, view) {
     circle(ctx, b.x, b.y, 2.4, on ? b.color : "#2a2420");
     if (on) circle(ctx, b.x - 0.6, b.y - 0.6, 0.9, "#fff");
   }
+
+  runZone(game, "ambient", ctx, game, t, view, zbox);
 
   // long shadows: each hunting figure's shadow reaches toward you before it does
   for (const e of game.entities) {
@@ -559,6 +564,9 @@ export function render(ctx, game, cam, view) {
   drawParts(ctx, t);
 
   drawLighting(ctx, game, vcam, z, pre, t, W, H, view);
+  ctx.setTransform(dpr * z, 0, 0, dpr * z, (-camX * z + sx) * dpr, (-camY * z + sy) * dpr);
+  runZone(game, "glow", ctx, game, t, view, zbox);
+  ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 1;
 
   // ---- screen-space post ----
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);

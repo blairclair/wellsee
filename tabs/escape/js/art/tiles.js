@@ -45,6 +45,7 @@ function litter(ctx, x, y, s, tx, ty, game, amt = 1) {
   }
 }
 
+import { runZone } from "./zones/index.js";
 export const TILE_ART = {
   dirt(ctx, x, y, s, tx, ty, game) {
     if (zone(game) === "gate") { // cobbles worn down the middle, the road out
@@ -328,6 +329,9 @@ export function prerenderLevel(game, scale = 2) {
   for (let ty = 0; ty < game.h; ty++) for (let tx = 0; tx < game.w; tx++) {
     const f = OVERHANG[name(tx, ty)]; if (f) f(ctx, tx * TILE, ty * TILE, TILE, tx, ty, game);
   }
+  // zone stage decor (static), may add lights/bulbs — see art/zones/
+  const zoneApi = { lights: [], bulbs: [] };
+  runZone(game, "paint", ctx, game, zoneApi);
   // bulb strings along the valance of tent/booth runs: a sagging wire; many bulbs dead
   const bulbs = [];
   for (let ty = 0; ty < game.h; ty++) {
@@ -360,5 +364,6 @@ export function prerenderLevel(game, scale = 2) {
   }
   const fxTiles = [];
   for (let ty = 0; ty < game.h; ty++) for (let tx = 0; tx < game.w; tx++) if (TILE_FX[name(tx, ty)]) fxTiles.push([tx, ty, name(tx, ty)]);
+  bulbs.push(...zoneApi.bulbs); lights.push(...zoneApi.lights);
   return { canvas: c, scale, bulbs, lights, fxTiles };
 }
