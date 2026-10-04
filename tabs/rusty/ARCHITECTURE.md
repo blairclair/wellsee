@@ -30,7 +30,8 @@ RUSTY.panel({
 ```
 
 - `balloons[].kind` is one of `speech`, `thought`, `shout`, `whisper`, `small`, `clown` (the Unwilling: black with a red edge, Creepster font). `x`, `y` and `w` are percentages of the art box: the top-left corner and the width. `tail` is the tip position in %. `who` is read by screen readers and shown in the mobile lettering strip. `text` may contain `<b>` and `<em>`.
-- Captions overlay the art on desktop and become flow strips above or below the art on phones. On phones, wide panels (w/h ≥ 1.5) move their balloons into a strip under the art. Write lettering that still makes sense that way.
+- Captions overlay the art on desktop and become flow strips above or below the art on phones. On phones, wide panels (w/h ≥ 1.5) move their balloons into a strip under the art. Write lettering that still makes sense that way. Other panels keep their balloons over the art on phones with a minimum width of about 36% of the panel; if a balloon would then cover key art, set `phoneStrip: true` on the panel to letter it under the art on phones as well (p27 does).
+- `mood` (optional) on a panel styles that panel's captions with a different mood from its page, e.g. `mood: "dusk"` for a sunset panel on a noon page. Page moods live on `<section class="page" data-mood>` in `index.html`: `cover`, `day`, `light`, `noon`, `dusk`, `lurid`, `grey`.
 - `draw(k, R)`. Always reference ids through `k`:
   - `k.id("sky")` gives `"p13-sky"`, `k.url("sky")` gives `"url(#p13-sky)"`, and `k.uid("x")` gives a fresh unique id.
   - **Every `id` in a panel must start with `pNN-`.** All 27 SVGs are inline in one document, so a bare `id="sky"` collides with another panel. `render.mjs` fails on this.

@@ -38,6 +38,7 @@ body { background:
 .page[data-mood="noon"]  { --pp: #ece0c2; }
 .page[data-mood="lurid"] { --pp: #e6c9b4; --paper-dot: #8b141422; }
 .page[data-mood="grey"]  { --pp: #c9c7c0; --paper-dot: #15100d1c; }
+.page[data-mood="dusk"]  { --pp: #e2c9b0; --paper-dot: #5a141422; }
 
 .page-head {
   display: flex; align-items: baseline; gap: .75rem; flex-wrap: wrap;
@@ -81,6 +82,9 @@ body { background:
 .cap.dark { background: #120c0c; color: #ead9b8; border-color: #000; }
 .page[data-mood="lurid"] .cap { background: #1a0b0b; color: #f1cfa6; border-color: #000; }
 .page[data-mood="grey"] .cap { background: #dedbd2; color: #2a2a2a; }
+/* dusk: a page mood, or a single panel's (a panel file may set mood:"dusk"; comic.js puts it on the figure) */
+.page[data-mood="dusk"] .cap, .panel[data-mood="dusk"] .cap { background: #2a1420; color: #f3c9a0; border-color: #000; }
+.page[data-mood="dusk"] .page-head .num { color: #6a1a2a; }
 .page[data-mood="cover"] .cap { background: #0d0909e6; color: var(--bulb); border-color: #000; font-style: italic; }
 
 .bal {
@@ -127,15 +131,21 @@ body { background:
   .caps.bottom { border-top: 2.5px solid var(--c-ink); }
   .page[data-mood="lurid"] .caps, .page[data-mood="cover"] .caps { background: #1a0b0b; }
   .page[data-mood="grey"] .caps { background: #dedbd2; }
+  .page[data-mood="dusk"] .caps, .panel[data-mood="dusk"] .caps { background: #2a1420; }
   .cap.dark { background: transparent; color: inherit; }
-  .bal { min-width: 6.4em; padding: .55em .75em; }
-  /* wide panels are too short on a phone to carry overlaid balloons:
-     letter them in a strip under the art, speaker named, no tails */
-  .panel.wide .art { aspect-ratio: auto; }
-  .panel.wide .art > svg { position: static; height: auto; aspect-ratio: var(--ar); }
-  .panel.wide .letters { position: static; display: flex; flex-wrap: wrap; gap: 6px; padding: 6px; background: #f6eedb; border-top: 2.5px solid var(--c-ink); }
-  .panel.wide .letters:not(:has(.bal)) { display: none; }
-  .panel.wide .bal { position: static; width: auto; min-width: 0; flex: 1 1 auto; border-radius: 14px; text-align: left; }
-  .panel.wide .tails { display: none; }
-  .panel.wide .bal .who { position: static; width: auto; height: auto; clip: auto; overflow: visible; white-space: normal; font-weight: bold; opacity: .75; }
+  /* square and tall panels keep overlaid balloons, but a % width of a ~335px panel turns
+     them into towers: give every balloon at least ~36% of the art (comic.js anchors
+     right-half balloons from the right, so they grow inward) */
+  .bal { min-width: max(6.4em, 36%); padding: .55em .75em; }
+  .bal.small { min-width: max(5em, 28%); }
+  /* wide panels are too short on a phone to carry overlaid balloons: letter them in a
+     strip under the art, speaker named, no tails. A panel can opt in with phoneStrip:true
+     (comic.js adds .strip) when its balloon would cover key art on a phone. */
+  .panel.wide .art, .panel.strip .art { aspect-ratio: auto; }
+  .panel.wide .art > svg, .panel.strip .art > svg { position: static; height: auto; aspect-ratio: var(--ar); }
+  .panel.wide .letters, .panel.strip .letters { position: static; display: flex; flex-wrap: wrap; gap: 6px; padding: 6px; background: #f6eedb; border-top: 2.5px solid var(--c-ink); }
+  .panel.wide .letters:not(:has(.bal)), .panel.strip .letters:not(:has(.bal)) { display: none; }
+  .panel.wide .bal, .panel.strip .bal { position: static; width: auto; min-width: 0; flex: 1 1 auto; border-radius: 14px; text-align: left; }
+  .panel.wide .tails, .panel.strip .tails { display: none; }
+  .panel.wide .bal .who, .panel.strip .bal .who { position: static; width: auto; height: auto; clip: auto; overflow: visible; white-space: normal; font-weight: bold; opacity: .75; }
 }

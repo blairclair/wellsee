@@ -57,7 +57,31 @@
   s += R.woodRabbit(k, { x: 1180, y: 1540, s: 1.6 });
   s += R.bucket(k, { x: 1350, y: 1540, water: "#7a1414" });
   s += label("The Players (3 variants) · rabbit-thing · the carved rabbit · bucket", 760, 1600);
-  document.getElementById("sheet").innerHTML = '<svg viewBox="0 0 1500 1620" xmlns="http://www.w3.org/2000/svg">' + R.defs(k) + s + "</svg>";
+  /* Row: back views, three-quarter seated poses, kneels */
+  var r5 = 2120;
+  s += R.personBack(k, { x: 110, y: r5, pose: "stand", outfit: "work", light: 1, rim: "#e0a030", headTurn: .3 });
+  s += R.personBack(k, { x: 290, y: r5, pose: "walk", outfit: "suit", stoop: 10 });
+  s += R.personBack(k, { x: 460, y: r5, pose: "slump", outfit: "eternal", wear: 1, light: -1 });
+  s += R.personBack(k, { x: 620, y: r5, pose: "walk", ch: "danny", outfit: "danny" });
+  s += label("R.personBack: stand+rim / walk suit / slump w1 / Danny", 370, r5 + 40);
+  s += R.person(k, { x: 790, y: r5, pose: "sit3q", outfit: "suit", expr: "tender", light: 1 });
+  s += R.person(k, { x: 1010, y: r5, pose: "sitChin", ch: "danny", outfit: "danny", expr: "sad", light: 1 });
+  s += R.person(k, { x: 1230, y: r5, pose: "sit3q", ch: "jess", outfit: "jess", expr: "smile", light: -1, flip: -1 });
+  s += R.person(k, { x: 1380, y: r5, pose: "sitSlump", outfit: "suit", expr: "resigned", light: 1 });
+  s += label("sit3q / sitChin / sit3q (Jess, flip) / sitSlump", 1100, r5 + 40);
+  /* Row: hands + kneels */
+  var r6 = 2560;
+  s += R.person(k, { x: 120, y: r6, pose: "kneel", expr: "tender", light: 1 });
+  s += R.person(k, { x: 330, y: r6, pose: "kneel3q", expr: "tender", light: 1, look: 1 });
+  s += label("kneel / kneel3q", 230, r6 + 40);
+  s += R.fist(k, { x: 640, y: r6 - 200, s: .9, ring: true });
+  s += R.fist(k, { x: 640, y: r6 - 60, s: .9, sleeve: "#6c4f37" });
+  s += R.grip(k, { x: 960, y: r6 - 200, s: .8, ring: true });
+  s += R.grip(k, { x: 960, y: r6 - 60, s: .8, wear: 1, sleeve: "#6b6e66" });
+  s += R.openHand(k, { x: 1100, y: r6 - 150, s: 1, ring: true, sleeve: "#7f8b6c" });
+  s += R.openHand(k, { x: 1300, y: r6 - 150, s: 1, curl: .5, wear: .8, tremble: true });
+  s += label("R.fist (ring / sleeve) · R.grip (work / wear 1) · R.openHand (ring / curl .5, wear .8)", 900, r6 + 40);
+  document.getElementById("sheet").innerHTML = '<svg viewBox="0 0 1500 2620" xmlns="http://www.w3.org/2000/svg">' + R.defs(k) + s + "</svg>";
 })();
 </script>
 </body>

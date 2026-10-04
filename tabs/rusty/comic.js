@@ -44,6 +44,9 @@
       (bot.length ? '<div class="caps bottom">' + bot.map(capHTML).join("") + "</div>" : "");
     fig.setAttribute("aria-label", "Panel " + id.replace("p", ""));
     if (p.w / p.h >= 1.5) fig.classList.add("wide");
+    if (p.phoneStrip) fig.classList.add("strip");
+    /* optional per-panel mood (e.g. a dusk panel on a noon page): restyles its captions */
+    if (p.mood) fig.setAttribute("data-mood", p.mood);
   }
 
   /* Balloon tails: wedge from the balloon's edge to the tip, or bubbles for thoughts. */

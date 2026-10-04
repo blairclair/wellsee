@@ -1,7 +1,7 @@
 /* p27: FINAL SPLASH. Rusty, grey and resigned, beside an overlarge EMPLOYEE OF THE MONTH trophy.
    Owner: see ARCHITECTURE.md. Span 6, viewBox 1200x1000, mood grey, wear 1.0. */
 RUSTY.panel({
-  id: "p27", w: 1200, h: 1000,
+  id: "p27", w: 1200, h: 1000, phoneStrip: true,   /* on phones the clown balloon goes under the art, off the plaque and ladder */
   alt: "On an empty carnival stage after closing, among confetti, popcorn and smeared blood, Rusty, grey, stooped and wearing his filthy tie, leans on his mop beside a towering gold trophy topped with a grinning clown figurine. Its plaque reads EMPLOYEE OF THE MONTH and lists RUSTY for every month, and a paper scroll of more months unrolls past his feet and off the stage. Footprints from long clown shoes track through the blood into the wings, a stepladder leans against the cup for polishing it, and his own face shows small and bent in the gold. White-gloved hands clap from off-stage.",
   captions: [
     { at: "tl", text: "Every month.", w: 34 },

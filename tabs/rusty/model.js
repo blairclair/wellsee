@@ -52,6 +52,96 @@
   }
   R.f = f; R.esc = esc; R.mix = mix; R.P = P; R.limb = limb; R.rot = rot;
 
+  /* ---------- curve geometry (organic shapes) ---------- */
+  /* Catmull-Rom spline through pts, sampled `per` points per segment. */
+  function crSample(pts, per) {
+    per = per || 8;
+    var out = [];
+    if (pts.length < 2) return pts.slice();
+    for (var i = 0; i < pts.length - 1; i++) {
+      var p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
+      for (var j = 0; j < per; j++) {
+        var t = j / per, t2 = t * t, t3 = t2 * t;
+        out.push([0, 1].map(function (c) {
+          return .5 * (2 * p1[c] + (-p0[c] + p2[c]) * t + (2 * p0[c] - 5 * p1[c] + 4 * p2[c] - p3[c]) * t2 + (-p0[c] + 3 * p1[c] - 3 * p2[c] + p3[c]) * t3);
+        }));
+      }
+    }
+    out.push(pts[pts.length - 1].slice());
+    return out;
+  }
+  /* Smooth cubic path through pts (Catmull-Rom -> bezier). closed adds Z and wraps. */
+  function smooth(pts, closed, tension) {
+    var n = pts.length, k6 = (tension == null ? 1 : tension) / 6;
+    if (n < 2) return "";
+    var g = function (i) { return closed ? pts[(i + n) % n] : pts[Math.max(0, Math.min(n - 1, i))]; };
+    var d = "M" + pt(pts[0]), last = closed ? n : n - 1;
+    for (var i = 0; i < last; i++) {
+      var p0 = g(i - 1), p1 = g(i), p2 = g(i + 1), p3 = g(i + 2);
+      d += " C" + pt([p1[0] + (p2[0] - p0[0]) * k6, p1[1] + (p2[1] - p0[1]) * k6]) + " " +
+        pt([p2[0] - (p3[0] - p1[0]) * k6, p2[1] - (p3[1] - p1[1]) * k6]) + " " + pt(p2);
+    }
+    return d + (closed ? "Z" : "");
+  }
+  /* Outline of a tapered, slightly bulging tube along a smooth centreline.
+     Returns {d: closed outline, a: one side (open path), b: other side}. */
+  function tubeShape(pts, w0, w1, o) {
+    o = o || {};
+    var c = crSample(pts, o.per || 6), n = c.length, L = [], Rr = [], bul = o.bulge || 0;
+    for (var i = 0; i < n; i++) {
+      var p = c[i], q = c[Math.min(n - 1, i + 1)], r = c[Math.max(0, i - 1)];
+      var dx = q[0] - r[0], dy = q[1] - r[1], m = Math.hypot(dx, dy) || 1, t = i / (n - 1);
+      var w = (w0 + (w1 - w0) * t + bul * Math.sin(Math.PI * Math.min(1, t * 1.15))) / 2;
+      L.push([p[0] - dy / m * w, p[1] + dx / m * w]); Rr.push([p[0] + dy / m * w, p[1] - dx / m * w]);
+    }
+    /* round caps */
+    function cap(cen, from, dir, steps) {
+      var a0 = Math.atan2(from[1] - cen[1], from[0] - cen[0]), rr = Math.hypot(from[0] - cen[0], from[1] - cen[1]);
+      var want = Math.atan2(dir[1], dir[0]), da = Math.PI;
+      var mid = a0 + Math.PI / 2;
+      if (Math.cos(mid - want) < 0) da = -Math.PI;
+      var out = []; for (var s2 = 1; s2 < steps; s2++) { var a = a0 + da * s2 / steps; out.push([cen[0] + Math.cos(a) * rr, cen[1] + Math.sin(a) * rr]); }
+      return out;
+    }
+    var de = [c[n - 1][0] - c[n - 2][0], c[n - 1][1] - c[n - 2][1]], ds = [c[0][0] - c[1][0], c[0][1] - c[1][1]];
+    var endCap = cap(c[n - 1], L[n - 1], de, 4), startCap = cap(c[0], Rr[0], ds, 4);
+    var ring = L.concat(endCap, Rr.slice().reverse(), startCap);
+    return { d: smooth(ring, true), a: smooth(L), b: smooth(Rr) };
+  }
+  /* R.tube(pts, w0, w1, color, lw, o): organic limb. Tapers from w0 to w1, o.bulge adds belly
+     to the middle, and the ink is heavier on the shadow side (o.shade: 1 = the right-hand side
+     of the direction of travel, -1 the left, 0 even). */
+  function tube(pts, w0, w1, color, lw, o) {
+    o = o || {};
+    lw = lw == null ? 4 : lw;
+    var t = tubeShape(pts, w0, w1, o), s = P(t.d, color, INK, lw);
+    if (o.shade) s += P(o.shade > 0 ? t.b : t.a, "none", INK, lw * 1.9);
+    return s;
+  }
+  R.crSample = crSample; R.smooth = smooth; R.tubeShape = tubeShape; R.tube = tube;
+  /* Bend the x of every coordinate in a path (absolute commands only; relative deltas are
+     scaled). Used for three-quarter views. */
+  function warpPath(d, wx, scaleRel) {
+    var out = "", cmd = "", re = /([MLCQSTHVAZmlcqsthvaz])|(-?\d*\.?\d+(?:e-?\d+)?)/g, m, nums = [];
+    function flush() {
+      if (!cmd) return;
+      var up = cmd === cmd.toUpperCase(), c = cmd.toUpperCase(), r = [];
+      if (c === "H") r = nums.map(function (x) { return up ? wx(x) : x * scaleRel; });
+      else if (c === "V" || c === "Z") r = nums;
+      else if (c === "A") r = nums.map(function (x, i) { return i % 7 === 5 ? (up ? wx(x) : x * scaleRel) : (i % 7 === 0 ? x * scaleRel : x); });
+      else r = nums.map(function (x, i) { return i % 2 ? x : (up ? wx(x) : x * scaleRel); });
+      out += cmd + r.map(function (x) { return f(x); }).join(",");
+      nums = [];
+    }
+    while ((m = re.exec(d))) {
+      if (m[1]) { flush(); cmd = m[1]; if (cmd === "Z" || cmd === "z") { out += cmd; cmd = ""; } }
+      else nums.push(+m[2]);
+    }
+    flush();
+    return out;
+  }
+  R.warpPath = warpPath;
+
   /* ---------- panel registration / rendering ---------- */
   R.ctx = function (pid) {
     return {
@@ -259,10 +349,14 @@
     });
     /* nose */
     var nz = c.nose || 1, nx = dx * 1.35;
-    var nd = "M" + f(nx - 5 * nz) + "," + f(-16) + " C" + f(nx - 7 * nz) + "," + f(-2) + " " + f(nx - 14 * nz) + "," + f(4 * nz) + " " + f(nx - 13 * nz) + "," + f(13 * nz) +
+    /* the flush sits on the bulb only; the bridge is skin with a soft shadow line on the
+       turned-away side, so it doesn't read as a block between the eyes at small scale */
+    var nd = "M" + f(nx - 6 * nz) + "," + f(-5) + " C" + f(nx - 11 * nz) + "," + f(0) + " " + f(nx - 14 * nz) + "," + f(5 * nz) + " " + f(nx - 13 * nz) + "," + f(13 * nz) +
       " C" + f(nx - 11 * nz) + "," + f(21 * nz) + " " + f(nx + 11 * nz) + "," + f(21 * nz) + " " + f(nx + 13 * nz) + "," + f(13 * nz) +
-      " C" + f(nx + 14 * nz) + "," + f(4 * nz) + " " + f(nx + 7 * nz) + "," + f(-2) + " " + f(nx + 5 * nz) + "," + f(-16);
+      " C" + f(nx + 14 * nz) + "," + f(5 * nz) + " " + f(nx + 11 * nz) + "," + f(0) + " " + f(nx + 6 * nz) + "," + f(-5) + " C" + f(nx + 3 * nz) + ",-8 " + f(nx - 3 * nz) + ",-8 " + f(nx - 6 * nz) + ",-5Z";
     s += P(nd, nose, null, 0);
+    var bsd = t > .05 ? -1 : (t < -.05 ? 1 : (o.light ? (o.light > 0 ? -1 : 1) : -1));
+    s += P("M" + f(nx + bsd * 3.5) + ",-17 C" + f(nx + bsd * 4) + ",-11 " + f(nx + bsd * 5.5 * nz) + ",-6 " + f(nx + bsd * 8 * nz) + ",-2", "none", INK, lw * .45, 'opacity=".5"');
     s += P("M" + f(nx - 8 * nz) + ",-3 C" + f(nx - 12 * nz) + "," + f(2) + " " + f(nx - 15 * nz) + "," + f(6 * nz) + " " + f(nx - 13 * nz) + "," + f(13 * nz) +
       " C" + f(nx - 11 * nz) + "," + f(21 * nz) + " " + f(nx + 11 * nz) + "," + f(21 * nz) + " " + f(nx + 13 * nz) + "," + f(13 * nz) +
       " C" + f(nx + 15 * nz) + "," + f(6 * nz) + " " + f(nx + 12 * nz) + ",2 " + f(nx + 8 * nz) + ",-3", "none", INK, lw);
@@ -332,10 +426,30 @@
     reach: { legs: [[[-18, -185], [-19, -95], [-20, -8]], [[18, -185], [24, -95], [28, -8]]], arms: [[SH[0], [-55, -235], [-52, -172]], [SH[1], [88, -272], [128, -262]]] },
     sit: { dy: 35, legs: [[[-12, -150], [66, -150], [64, -8]], [[14, -150], [86, -146], [86, -8]]], arms: [[[-46, -263], [-40, -200], [44, -160]], [[46, -263], [62, -200], [80, -158]]] },
     sitLow: { dy: 110, legs: [[[-12, -75], [70, -95], [68, -8]], [[14, -75], [90, -92], [92, -8]]], arms: [[[-46, -188], [-34, -128], [50, -104]], [[46, -188], [64, -128], [84, -100]]], stoop: 16 },
-    kneel: { dy: 70, legs: [[[-12, -115], [-6, -14], [-74, -8]], [[14, -115], [72, -112], [72, -8]]], arms: [[[-46, -228], [-50, -170], [-44, -110]], [[46, -228], [74, -262], [88, -300]]] },
+    kneel: { dy: 70, legs: [[[-12, -115], [-8, -20], [-70, -10]], [[14, -115], [60, -102], [66, -8]]], arms: [[[-46, -228], [-50, -170], [-44, -110]], [[46, -228], [74, -262], [88, -300]]] },
     dragged: { legs: [[[-14, -185], [-44, -110], [-78, -30]], [[14, -185], [-8, -100], [-36, -18]]], arms: [[SH[0], [-70, -330], [-84, -372]], [SH[1], [72, -330], [86, -372]]], stoop: -12 },
     slump: { legs: [[[-18, -185], [-19, -95], [-20, -8]], [[18, -185], [19, -95], [20, -8]]], arms: [[SH[0], [-40, -232], [-26, -170]], [SH[1], [56, -232], [50, -170]]], stoop: 14 }
   };
+  /* Added poses. A pose with `dy` (seated, kneeling) lowers the torso and head by dy; its legs,
+     arms and `carry` are all given in that already-lowered frame (e.g. shoulders at -298+dy).
+     `view` gives the pose a default three-quarter turn (see R.person o.view). */
+  (function (A) {
+    var add = {
+      /* seated three-quarter, forearms resting on a table edge at about y=-185 */
+      sit3q: { dy: 35, view: .55, stoop: 6, legs: [[[-10, -150], [62, -150], [58, -8]], [[14, -150], [86, -146], [84, -8]]],
+        arms: [[[-46, -263], [-22, -196], [50, -186]], [[46, -263], [64, -194], [116, -188]]], carry: [84, -192] },
+      /* seated three-quarter, near hand propping the chin, far forearm on the table */
+      sitChin: { dy: 35, view: .55, stoop: 10, legs: [[[-10, -150], [62, -150], [58, -8]], [[14, -150], [86, -146], [84, -8]]],
+        arms: [[[-46, -263], [-22, -196], [50, -186]], [[46, -263], [72, -198], [24, -290]]] },
+      /* seated, slumped, hands in the lap: waiting */
+      sitSlump: { dy: 35, view: .3, stoop: 14, legs: [[[-10, -150], [64, -150], [60, -8]], [[14, -150], [84, -146], [84, -8]]],
+        arms: [[[-46, -263], [-34, -200], [34, -160]], [[46, -263], [62, -200], [58, -156]]] },
+      /* kneeling three-quarter, reaching up and forward (pinning something to a board) */
+      kneel3q: { dy: 70, view: .5, stoop: 4, legs: [[[-12, -115], [-8, -20], [-70, -10]], [[14, -115], [60, -102], [66, -8]]],
+        arms: [[[-46, -228], [-26, -176], [34, -160]], [[46, -228], [86, -250], [106, -292]]] }
+    };
+    for (var key in add) A[key] = add[key];
+  })(R.POSE);
 
   /* R.person(k, o): o = {x,y,s,flip, ch, outfit, pose, expr, turn, wear, stoop, headTilt, light, prop, carry(svg string drawn at carry point), hat, look, lw}
      Rusty is ~400 units tall. */
@@ -350,7 +464,14 @@
     var shirt = mix(of.shirt, "#77746c", w * .5), pants = mix(of.pants, "#3a3a3a", w * .4);
     var skin = mix(c.skin, "#b3aea3", w * .6);
     var s = "";
-    var legs = pose.legs, arms = pose.arms.map(function (a) { return a.map(R_); });
+    /* three-quarter view: o.view 0 (front, default) .. ~.7. The far (-x) half of the body
+       narrows, the centre line (buttons, tie, nametag) slides toward the near side, and the
+       far arm goes behind the torso. Poses may carry a default `view`. */
+    var v = Math.max(0, Math.min(.8, o.view != null ? o.view : (pose.view || 0)));
+    var wx = function (x) { return v ? (x < 0 ? x * (1 - .45 * v) : x * (1 - .1 * v)) + 12 * v : x; };
+    var wpt = function (p) { return [wx(p[0]), p[1]]; };
+    var legs = v ? pose.legs.map(function (L) { return [wpt(L[0]), L[1], L[2]]; }) : pose.legs;
+    var arms = pose.arms.map(function (a) { return [R_(v ? wpt(a[0]) : a[0]), R_(a[1]), R_(a[2])]; });
     /* legs */
     var legW = of.gown ? 22 : 34;
     legs.forEach(function (L) {
@@ -360,7 +481,8 @@
         " C" + f(ft[0] + 30) + "," + f(ft[1] - 4) + " " + f(ft[0] + 32) + "," + f(ft[1] + 6) + " " + f(ft[0] + 27) + "," + f(ft[1] + 8) + "Z", of.boots, INK, lw * .8);
     });
     if (of.stains) s += '<circle cx="' + f(legs[1][1][0] + 4) + '" cy="' + f(legs[1][1][1] + 10) + '" r="9" fill="#4a1512" opacity=".7"/>';
-    if (!of.gown) s += P("M-40," + f(-192 + dy) + " L40," + f(-192 + dy) + " L37," + f(-160 + dy) + " L-37," + f(-160 + dy) + "Z", pants, INK, lw * .8);
+    if (!of.gown) s += P(warpPath("M-40," + f(-192 + dy) + " L40," + f(-192 + dy) + " L37," + f(-160 + dy) + " L-37," + f(-160 + dy) + "Z", wx, 1), pants, INK, lw * .8);
+    function armSvgFar(A) { return armSvg(A); }
     /* torso group (rotated by stoop around hip) */
     var tg = "";
     var torso = of.gown ?
@@ -396,6 +518,14 @@
       if (of.keys) tg += '<circle cx="-34" cy="-178" r="7" fill="none" stroke="#9c9586" stroke-width="2.5"/>' +
         P("M-38,-172 l-4,12 M-33,-171 l1,13 M-29,-173 l5,10", "none", "#b8b1a0", 3);
     }
+    if (v) {
+      var sr = 1 - .3 * v;
+      tg = tg.replace(/ d="([^"]*)"/g, function (m, d) { return ' d="' + warpPath(d, wx, sr) + '"'; })
+        .replace(/ cx="(-?[\d.]+)"/g, function (m, x) { return ' cx="' + f(wx(+x)) + '"'; })
+        .replace(/ rx="(-?[\d.]+)"/g, function (m, x) { return ' rx="' + f(+x * (1 - .1 * v)) + '"'; })
+        .replace(/translate\((-?[\d.]+),/g, function (m, x) { return "translate(" + f(wx(+x)) + ","; });
+      s += armSvgFar(arms[0]);
+    }
     s += '<g transform="translate(0,' + dy + ") rotate(" + f(stoop) + ' 0 -185)">' + tg + "</g>";
     /* prop line through the hands */
     var h1 = arms[0][2], h2 = arms[1][2], prop = o.prop !== undefined ? o.prop : pose.prop, ps = "";
@@ -419,23 +549,23 @@
       }
     }
     /* arms */
-    var sleeve = of.jacket ? shirt : shirt;
-    var armSvg = function (A) {
+    var sleeve = shirt;
+    function armSvg(A) {
       var el = A[1], hd = A[2], wr = [hd[0] + (el[0] - hd[0]) * .15, hd[1] + (el[1] - hd[1]) * .15];
-      return limb([A[0], el, wr], 24, sleeve, lw) +
+      return limb([A[0], el, wr], 24, shirt, lw) +
         '<circle cx="' + f(hd[0]) + '" cy="' + f(hd[1]) + '" r="11" fill="' + skin + '" stroke="' + INK + '" stroke-width="' + f(lw * .8) + '"/>';
-    };
-    s += armSvg(arms[0]);
+    }
+    if (!v) s += armSvg(arms[0]);
     s += ps;
     /* carried object */
     if (o.carry && pose.carry) { var cp = R_(pose.carry); s += '<g transform="translate(' + f(cp[0]) + "," + f(cp[1] + dy * 0) + ')">' + o.carry + "</g>"; }
     s += armSvg(arms[1]);
     /* neck + head */
     var R0 = function (p) { var q = rot(p, stoop, [0, -185]); return [q[0], q[1] + dy]; };
-    var nb = R0([0, -300]), nt = R0([0, -328]);
+    var nb = R0([wx(0), -300]), nt = R0([wx(0), -328]);
     var neck = limb([nb, nt], 26, skin, lw);
-    var hc = R0([2, -362]);
-    var head = R.head(k, { x: hc[0], y: hc[1], s: .52, rot: stoop + (o.headTilt || 0), ch: ch, expr: o.expr, turn: o.turn == null ? .25 : o.turn, wear: w, light: o.light, lw: 5.5, hat: o.hat, look: o.look, glint: o.glint });
+    var hc = R0([wx(0) + 2, -362]);
+    var head = R.head(k, { x: hc[0], y: hc[1], s: .52, rot: stoop + (o.headTilt || 0), ch: ch, expr: o.expr, turn: o.turn == null ? .25 + .45 * v : o.turn, wear: w, light: o.light, lw: 5.5, hat: o.hat, look: o.look, glint: o.glint });
     return "<g " + T(o) + ">" + neck + s + head + "</g>";
   };
   R.rusty = function (k, o) { o.ch = o.ch || "rusty"; return R.person(k, o); };
@@ -633,39 +763,243 @@
 
   /* ---------- hands (close-ups). ~100 units across at s=1. o.wear greys the skin. ---------- */
   function handSkin(o) { return mix(o.skin || R.CH.rusty.skin, "#b3aea3", (o.wear || 0) * .6); }
-  /* Fist gripping a vertical bar at x≈36 (fingers wrap to +x). o.ring = wedding band, o.sleeve = cuff colour. */
+  function gT(o) {
+    return 'transform="translate(' + f(o.x || 0) + "," + f(o.y || 0) + ") rotate(" + f(o.rot || 0) + ") scale(" + f((o.s || 1) * (o.flip || 1) * 1000) / 1000 + "," + f((o.s || 1) * 1000) / 1000 + ')"';
+  }
+  /* R.grip(k, o): one big working hand gripping a vertical bundle (mop strands, a bar, a handle).
+     Local frame: wrist at -x, the fingers curl around the bundle at x≈0..40; we look at the
+     finger side. Knuckles, overlapping fingers (pinky first), a thumb crossing the grip, DIP
+     creases, chapped knuckles. Promoted from artist A's p03 helper.
+     o = {x,y,s,rot,flip, ring, skin, wear, sleeve (cuff colour, default work olive),
+          arm (default true: bare forearm + rolled cuff; false: a short wrist only),
+          rolled (default true; false = a full sleeve down to the wrist)} */
+  R.grip = function (k, o) {
+    o = o || {};
+    var SK = handSkin(o), SKD = mix(SK, "#6a3a30", .38), SKL = mix(SK, "#fff3e0", .35), CHAP = mix(SK, "#c9503a", .42), SLV = o.sleeve || "#7f8b6c";
+    var g = "", arm = o.arm !== false;
+    if (arm && o.rolled === false) {
+      g += P("M-300,-70 C-220,-66 -150,-52 -92,-42 L-90,48 C-150,56 -220,64 -300,70Z", SLV, INK, 4.5);
+      g += P("M-120,-46 C-112,-14 -112,22 -118,52", "none", INK, 2.5) + R.tone(k, "M-300,26 C-220,30 -150,38 -92,32 L-90,48 C-150,56 -220,64 -300,70Z", .45);
+      g += P("M-240,-30 C-210,-20 -180,-26 -150,-16 M-250,16 C-220,24 -190,18 -160,26", "none", mix(SLV, INK, .45), 2);
+    } else if (arm) {
+      g += P("M-260,-58 C-200,-56 -150,-48 -96,-40 L-92,46 C-150,52 -200,58 -260,62Z", SK, INK, 4.5);
+      g += R.tone(k, "M-260,22 C-200,26 -150,34 -94,30 L-92,46 C-150,52 -200,58 -260,62Z", .45);
+      g += P("M-230,-40 l6,-6 M-210,-44 l7,-5 M-190,-38 l6,-7 M-170,-40 l7,-5 M-150,-34 l6,-6 M-220,-24 l6,-5 M-180,-22 l7,-5 M-140,-20 l6,-6", "none", mix(SK, "#5a3020", .6), 1.6);
+      g += P("M-200,-6 C-170,0 -140,-4 -110,4", "none", SKD, 2.2);
+      g += P("M-300,-74 L-226,-70 C-216,-30 -214,30 -224,76 L-300,80Z", SLV, INK, 4.5);
+      g += P("M-246,-70 C-238,-30 -236,30 -246,78", "none", INK, 2.5) + R.tone(k, "M-300,20 L-222,24 L-224,76 L-300,80Z", .45);
+    } else {
+      g += P("M-150,-40 C-130,-44 -112,-44 -96,-40 L-92,46 C-110,50 -130,50 -150,46 C-156,20 -156,-14 -150,-40Z", SK, INK, 4.5);
+      g += R.tone(k, "M-150,22 C-130,26 -112,30 -94,30 L-92,46 C-110,50 -130,50 -150,46Z", .45);
+    }
+    /* back of hand / palm mass */
+    g += P("M-104,-44 C-80,-60 -40,-64 -18,-56 C-6,-50 -2,-36 -6,-24 L-8,48 C-30,60 -70,60 -98,48 C-110,20 -112,-20 -104,-44Z", SK, INK, 4.5);
+    g += P("M-70,-56 C-60,-62 -44,-64 -32,-60 M-48,-58 C-40,-62 -30,-62 -22,-58", "none", SKD, 2);
+    g += R.tone(k, "M-104,-44 C-110,-20 -110,20 -98,48 C-80,56 -60,58 -50,56 C-70,30 -76,-10 -70,-56Z", .35);
+    /* fingers, pinky first so each upper finger overlaps the one below: [y, h, reach] */
+    [[40, 19, 28], [17, 22, 40], [-7, 24, 46], [-32, 23, 40]].forEach(function (F, i) {
+      var y = F[0], h = F[1], r = F[2], t = y - h / 2, b = y + h / 2;
+      var d = "M-30," + f(t + 2) + " C-10," + f(t - 2) + " " + f(r - 18) + "," + f(t - 3) + " " + f(r - 4) + "," + f(t + 1) +
+        " C" + f(r + 8) + "," + f(t + 5) + " " + f(r + 8) + "," + f(b - 3) + " " + f(r - 4) + "," + f(b) +
+        " C" + f(r - 14) + "," + f(b + 2) + " -10," + f(b + 1) + " -30," + f(b - 1) + "Z";
+      g += P(d, SK);
+      g += P("M-16," + f(t + .5) + " C" + f(r - 22) + "," + f(t - 3) + " " + f(r - 18) + "," + f(t - 3) + " " + f(r - 4) + "," + f(t + 1) +
+        " C" + f(r + 8) + "," + f(t + 5) + " " + f(r + 8) + "," + f(b - 3) + " " + f(r - 4) + "," + f(b) +
+        " C" + f(r - 14) + "," + f(b + 2) + " -10," + f(b + 1) + " -18," + f(b - .5), "none", INK, i === 3 ? 4.5 : 3.6);
+      g += P("M-22," + f(b - 3) + " C" + f(r * .4) + "," + f(b) + " " + f(r - 10) + "," + f(b + 1) + " " + f(r - 4) + "," + f(b - 1) + " L" + f(r - 4) + "," + f(y + 2) + " C" + f(r * .4) + "," + f(y + 4) + " -10," + f(y + 3) + " -22," + f(y + 1) + "Z", SKD, null, 0, 'opacity=".35"');
+      g += P("M" + f(r - 16) + "," + f(t + 4) + " q-4," + f(h * .35) + " 0," + f(h * .7), "none", INK, 1.8);
+      g += P("M" + f(r - 22) + "," + f(t + 6) + " q-3," + f(h * .25) + " 0," + f(h * .5), "none", SKD, 1.4);
+      g += '<ellipse cx="' + f(r - 2) + '" cy="' + f(y - 2) + '" rx="5" ry="' + f(h * .26) + '" fill="' + CHAP + '" opacity=".55"/>';
+      g += P("M" + f(r - 6) + "," + f(t + 4) + " c4,1 6,3 6,6", "none", SKL, 2, 'opacity=".8"');
+      if (o.ring && i === 1) g += P("M-14," + f(t - 1) + " C-10," + f(t + 4) + " -10," + f(b - 4) + " -14," + f(b + 1) + " L-6," + f(b + 1) + " C-2," + f(b - 4) + " -2," + f(t + 4) + " -6," + f(t - 1) + "Z", "#c9a23a", INK, 2) +
+        P("M-11," + f(t + 3) + " v" + f(h - 6), "none", "#f3dc8a", 1.5);
+    });
+    /* thumb, crossing over index and middle, nail at the tip */
+    g += P("M-96,30 C-86,6 -60,-14 -30,-24 C-6,-32 14,-34 26,-28 C34,-22 30,-10 20,-8 C2,-6 -20,-2 -40,10 C-58,22 -70,40 -84,50Z", SK, INK, 4.5);
+    g += P("M10,-30 C20,-33 28,-30 28,-24 C28,-18 22,-15 14,-16 C10,-20 8,-26 10,-30Z", mix(SK, "#fff3e8", .4), INK, 2);
+    g += P("M-14,-24 q-3,8 2,16", "none", INK, 2) + P("M-60,-2 C-50,-8 -40,-12 -30,-14", "none", SKD, 2);
+    g += R.tone(k, "M-84,50 C-70,40 -58,22 -40,10 C-20,-2 2,-6 20,-8 L18,-2 C-10,4 -40,20 -60,46Z", .4);
+    g += '<ellipse cx="-12" cy="-20" rx="7" ry="4" fill="' + CHAP + '" opacity=".5"/>';
+    return "<g " + gT(o) + ">" + g + "</g>";
+  };
+  /* Fist gripping a vertical bar at x≈36 (fingers wrap to +x). o.ring = wedding band, o.sleeve = cuff colour.
+     Drawn with R.grip (knuckles, overlapping fingers); same frame and footprint as before. */
   R.fist = function (k, o) {
     o = o || {};
-    var sk = handSkin(o), dk = mix(sk, "#5a3a3a", .35), s = "";
-    if (o.sleeve) s += P("M-44,-44 L-260,-60 L-260,60 L-40,44Z", o.sleeve, INK, 4) + P("M-60,-46 L-60,46", "none", INK, 3);
-    s += P("M-52,-40 C-58,-10 -52,30 -32,46 L36,46 C50,20 50,-20 42,-44 C10,-58 -26,-56 -52,-40Z", sk, INK, 4);
-    s += R.tone(k, "M-52,-40 C-58,-10 -52,30 -32,46 L-10,46 C-24,20 -30,-20 -20,-52Z", .35);
-    for (var i = 0; i < 4; i++) {
-      var y = -42 + i * 21;
-      s += '<rect x="16" y="' + y + '" width="48" height="20" rx="10" fill="' + sk + '" stroke="' + INK + '" stroke-width="3.5"/>';
-      s += P("M30," + (y + 4) + " q4,6 0,12", "none", dk, 2);
-    }
-    if (o.ring) s += '<rect x="22" y="1" width="7" height="20" rx="2" fill="#d9b23a" stroke="' + INK + '" stroke-width="2"/>';
-    s += P("M-42,-42 C-30,-66 12,-68 34,-52 C42,-44 34,-34 22,-37 C2,-42 -20,-36 -32,-26Z", sk, INK, 4);
-    s += P("M-20,10 l6,-4 M-8,20 l6,-3 M-28,-6 l7,-3", "none", dk, 2);
-    return '<g transform="translate(' + f(o.x || 0) + "," + f(o.y || 0) + ") rotate(" + f(o.rot || 0) + ") scale(" + f((o.s || 1) * (o.flip || 1) * 1000) / 1000 + "," + f((o.s || 1) * 1000) / 1000 + ')">' + s + "</g>";
+    var inner = R.grip(k, { x: 16, y: -2, s: .86, ring: o.ring, skin: o.skin, wear: o.wear, sleeve: o.sleeve, arm: !!o.sleeve, rolled: false });
+    return "<g " + gT(o) + ">" + inner + "</g>";
   };
-  /* Open hand, palm toward viewer, fingers up. o.curl 0..1 bends fingers in. */
+  /* Open hand, palm toward viewer, fingers up. o.curl 0..1 bends fingers in.
+     Same skeleton as before (finger bases, lengths and angles, so panel overlays still line up),
+     drawn as tapered three-segment fingers with joint creases and fingertip pads, a thumb that
+     grows out of a fleshy thenar mound, and palm lines. */
   R.openHand = function (k, o) {
     o = o || {};
-    var sk = handSkin(o), dk = mix(sk, "#5a3a3a", .35), c = o.curl || 0, s = "";
-    if (o.sleeve) s += P("M-34,30 L-44,260 L44,260 L34,30Z", o.sleeve, INK, 4);
+    var sk = handSkin(o), dk = mix(sk, "#5a3a3a", .35), lt = mix(sk, "#fff3e0", .3), c = o.curl || 0, s = "";
+    if (o.sleeve) s += P("M-36,30 C-40,110 -46,190 -46,260 L46,260 C46,190 40,110 36,30 C12,38 -12,38 -36,30Z", o.sleeve, INK, 4) +
+      P("M-38,48 C-12,58 12,58 38,48", "none", INK, 3) + R.tone(k, "M10,40 C30,40 36,36 38,48 L46,260 L20,260Z", .4);
+    /* wrist */
+    s += P("M-30,24 C-32,36 -34,44 -36,52 L36,52 C34,44 32,36 30,24Z", sk, INK, 3.5);
     var bases = [[-26, -26], [-9, -32], [8, -31], [24, -24]], lens = [54, 64, 60, 46], angs = [-104, -94, -84, -72];
+    var fingers = "";
     bases.forEach(function (b, i) {
-      var a = angs[i] * Math.PI / 180, L = lens[i], m = [b[0] + Math.cos(a) * L * .55, b[1] + Math.sin(a) * L * .55];
+      var a = angs[i] * Math.PI / 180, L = lens[i];
+      var m = [b[0] + Math.cos(a) * L * .55, b[1] + Math.sin(a) * L * .55];
       var a2 = a + c * 1.4, tip = [m[0] + Math.cos(a2) * L * .45, m[1] + Math.sin(a2) * L * .45];
-      s += limb([b, m, tip], 19 - i * .5, sk, 3.5);
-      if (o.ring && i === 2) s += limb([[b[0] + Math.cos(a) * 14, b[1] + Math.sin(a) * 14], [b[0] + Math.cos(a) * 20, b[1] + Math.sin(a) * 20]], 21, "#d9b23a", 2);
+      var j2 = [m[0] + Math.cos(a2) * L * .22, m[1] + Math.sin(a2) * L * .22];
+      var w0 = 19 - i * .5, w1 = 14.5 - i * .6;
+      fingers += tube([b, m, tip], w0, w1, sk, 3.2, { per: 5 });
+      /* joint creases across the finger (palm side) */
+      [m, j2].forEach(function (q, qi) {
+        var nx = -Math.sin(qi ? a2 : (a + a2) / 2), ny = Math.cos(qi ? a2 : (a + a2) / 2), hw = (qi ? w1 + 2 : w0) * .36;
+        fingers += P("M" + pt([q[0] - nx * hw, q[1] - ny * hw]) + " Q" + pt([q[0] + Math.cos(a2) * 2, q[1] + Math.sin(a2) * 2]) + " " + pt([q[0] + nx * hw, q[1] + ny * hw]), "none", dk, 1.4, 'opacity=".5"');
+      });
+      /* fingertip pad */
+      fingers += '<ellipse cx="' + f(tip[0] - Math.cos(a2) * 4) + '" cy="' + f(tip[1] - Math.sin(a2) * 4) + '" rx="' + f(w1 * .3) + '" ry="' + f(w1 * .38) + '" fill="' + lt + '" opacity=".75"/>';
+      if (o.ring && i === 2) fingers += limb([[b[0] + Math.cos(a) * 15, b[1] + Math.sin(a) * 15], [b[0] + Math.cos(a) * 19, b[1] + Math.sin(a) * 19]], w0 - 1, "#d9b23a", 1.6);
     });
-    s += limb([[-30, 6], [-56, -14], [-70, -40]], 22, sk, 3.5);
-    s += P("M-40,-30 C-44,0 -36,34 0,40 C34,36 44,0 38,-30 C20,-38 -20,-38 -40,-30Z", sk, INK, 4);
-    s += P("M-30,-6 C-10,4 14,0 30,-14 M-24,12 C-6,20 12,18 26,6", "none", dk, 2.2);
+    s += fingers;
+    /* thumb (under the palm's edge, so it grows out of the thenar mound) */
+    s += tube([[-22, 18], [-50, -8], [-66, -34]], 24, 16, sk, 3.4, { per: 5, bulge: 3 });
+    s += P("M-58,-18 Q-54,-22 -50,-18", "none", dk, 1.5);
+    s += '<ellipse cx="-63" cy="-30" rx="5" ry="6" fill="' + lt + '" opacity=".7"/>';
+    /* palm, with heel pads */
+    s += P("M-40,-30 C-46,-6 -40,26 -30,36 C-18,46 18,46 30,38 C42,24 46,-6 38,-30 C26,-36 14,-38 0,-38 C-16,-38 -30,-36 -40,-30Z", sk, INK, 4);
+    s += P("M38,-30 C46,-6 42,24 30,38", "none", INK, 6, 'opacity=".55"');
+    /* palm lines + mounds */
+    s += P("M-32,-10 C-12,-2 12,-6 34,-18 M-30,6 C-12,14 8,12 24,4 M-22,32 C-30,16 -30,0 -22,-14", "none", dk, 2.2);
+    s += P("M-28,-22 C-14,-26 0,-26 14,-24", "none", dk, 1.4, 'opacity=".6"');
+    s += R.tone(k, "M14,-36 C30,-34 38,-30 38,-30 C46,-6 42,24 30,38 C22,42 16,44 12,44 C20,20 20,-10 14,-36Z", .35);
     if (o.tremble) s += P("M-80,-60 l-10,-6 M-84,-40 l-12,0 M76,-70 l10,-6 M80,-50 l12,0", "none", INK, 2.5);
-    return '<g transform="translate(' + f(o.x || 0) + "," + f(o.y || 0) + ") rotate(" + f(o.rot || 0) + ") scale(" + f((o.s || 1) * (o.flip || 1) * 1000) / 1000 + "," + f((o.s || 1) * 1000) / 1000 + ')">' + s + "</g>";
+    return "<g " + gT(o) + ">" + s + "</g>";
+  };
+
+  /* ---------- back view ---------- */
+  /* R.personBack(k, o): a figure seen from behind (walking away, looking at something).
+     Same proportions, anchors, outfits and wear as R.person: feet at 0, hips at -185,
+     shoulders at -298, Rusty ~400 tall. Developed from artist B's p09 helper.
+     o = {x,y,s,flip, ch, outfit, pose ("stand" | "walk" | "slump"), wear, stoop, light (1 = lit
+          from the right), rim (rim-light colour, e.g. "#ffe48a"; drawn on the lit side),
+          holdL / holdR (svg drawn at the left / right hand, e.g. a thermos), lw, headTurn (-1..1:
+          the skull turns a little, showing an ear and the edge of the mustache)} */
+  var BPOSE = {
+    stand: { legs: [[[-18, -185], [-19, -95], [-20, -8]], [[18, -185], [19, -95], [20, -8]]], arms: [[[-46, -298], [-58, -236], [-58, -170]], [[46, -298], [60, -238], [64, -176]]] },
+    walk: { legs: [[[-17, -185], [-22, -94], [-24, -6]], [[17, -185], [22, -104], [24, -30]]], arms: [[[-46, -298], [-60, -232], [-62, -166]], [[46, -298], [52, -242], [50, -200]]], lift: 1 },
+    slump: { legs: [[[-18, -185], [-19, -95], [-20, -8]], [[18, -185], [19, -95], [20, -8]]], arms: [[[-46, -298], [-52, -234], [-46, -172]], [[46, -298], [54, -234], [50, -172]]], stoop: 14 }
+  };
+  R.BPOSE = BPOSE;
+  R.personBack = function (k, o) {
+    o = o || {};
+    var ch = o.ch || "rusty", c = R.CH[ch], of = typeof o.outfit === "object" ? o.outfit : R.OUTFIT[o.outfit || "work"];
+    var pose = typeof o.pose === "object" ? o.pose : (BPOSE[o.pose || "stand"] || BPOSE.stand);
+    var w = o.wear || 0, lw = o.lw || 4, rim = o.rim, lt = o.light || 1;
+    var stoop = (o.stoop != null ? o.stoop : (pose.stoop || 0)) + (ch.indexOf("rusty") === 0 ? w * 12 : 0);
+    var shirt = mix(of.shirt, "#77746c", w * .5), pants = mix(of.pants, "#3a3a3a", w * .4), skin = mix(c.skin, "#b3aea3", w * .6);
+    var hair = mix(c.hair, "#dcd8cf", Math.min(1, (c.grey || 0) + w * .8));
+    var hunch = stoop * .9, s = "";
+    /* legs + heels (boots seen from behind) */
+    pose.legs.forEach(function (L, i) {
+      s += tube(L, of.gown ? 22 : 36, of.gown ? 20 : 30, of.gown ? mix(skin, "#333", .2) : pants, lw, { bulge: 3, shade: lt > 0 ? (i ? 0 : 1) : (i ? -1 : 0) });
+      var ft = L[2], lifted = pose.lift && i === 1;
+      if (lifted) s += P("M" + f(ft[0] - 15) + "," + f(ft[1] - 4) + " C" + f(ft[0] - 16) + "," + f(ft[1] + 14) + " " + f(ft[0] + 16) + "," + f(ft[1] + 14) + " " + f(ft[0] + 15) + "," + f(ft[1] - 4) + " C" + f(ft[0] + 8) + "," + f(ft[1] - 10) + " " + f(ft[0] - 8) + "," + f(ft[1] - 10) + " " + f(ft[0] - 15) + "," + f(ft[1] - 4) + "Z", mix(of.boots, "#000", .35), INK, lw * .8) +
+        P("M" + f(ft[0] - 10) + "," + f(ft[1] + 4) + " h20", "none", "#5a4a3a", 2);
+      else s += P("M" + f(ft[0] - 17) + "," + f(ft[1] + 9) + " L" + f(ft[0] - 16) + "," + f(ft[1] - 10) + " C" + f(ft[0] - 8) + "," + f(ft[1] - 16) + " " + f(ft[0] + 8) + "," + f(ft[1] - 16) + " " + f(ft[0] + 16) + "," + f(ft[1] - 10) + " L" + f(ft[0] + 17) + "," + f(ft[1] + 9) + "Z", of.boots, INK, lw * .8);
+    });
+    if (!of.gown) {
+      s += P("M-20,-150 C-22,-110 -18,-70 -20,-30 M20,-150 C22,-110 18,-70 20,-30", "none", INK, 1.6, 'opacity=".35"');
+      s += P("M-41,-194 C-20,-190 20,-190 41,-194 L38,-160 C20,-150 -20,-150 -38,-160Z", pants, INK, lw * .8);
+      s += P("M0,-190 V-156", "none", INK, 1.8, 'opacity=".6"');
+      if (!of.jacket) s += P("M-34,-178 h22 l-2,24 h-18Z M12,-178 h22 l-2,24 h-18Z", "none", INK, 1.8, 'opacity=".65"');
+    }
+    /* neck */
+    s += limb([[0, -312 + hunch * .5], [0, -334 + hunch]], 40, skin, lw);
+    /* torso from the back */
+    var top = -305 + hunch * .3;
+    var torso = of.gown ? "M-46," + top + " C-62,-240 -70,-150 -72,-60 L72,-60 C70,-150 62,-240 46," + top + " C24," + (top - 11) + " -24," + (top - 11) + " -46," + top + "Z" :
+      "M-46," + top + " C-56,-268 -50,-220 -42,-184 C-20,-180 20,-180 42,-184 C50,-220 56,-268 46," + top + " C24," + (top - 11) + " -24," + (top - 11) + " -46," + top + "Z";
+    s += P(torso, shirt, INK, lw);
+    if (of.jacket) {
+      s += P("M0,-300 V-184 M0,-214 l-3,30", "none", INK, 2, 'opacity=".7"');
+      s += P("M-40,-286 C-30,-250 -32,-220 -36,-190 M40,-286 C30,-250 32,-220 36,-190", "none", INK, 1.4, 'opacity=".4"');
+    } else if (!of.gown) {
+      s += P("M-46,-282 C-20,-276 20,-276 46,-282", "none", INK, 1.8, 'opacity=".7"');
+      s += P("M0,-278 V-200 M-30,-262 C-24,-250 -26,-236 -34,-226 M30,-262 C24,-250 26,-236 34,-226 M-22,-204 C-12,-198 12,-198 22,-204", "none", INK, 1.6, 'opacity=".5"');
+    }
+    if (of.flannel) {
+      for (var i = -40; i <= 40; i += 16) s += P("M" + i + ",-306 L" + (i + 2) + ",-186", "none", mix(shirt, "#1a2a3a", .5), 4, 'opacity=".5"');
+      for (var j = -292; j < -186; j += 18) s += P("M-50," + j + " L52," + j, "none", mix(shirt, "#9a3030", .6), 3, 'opacity=".45"');
+    }
+    if (of.stains) s += '<path d="M-24,-240 c8,-6 18,2 14,10 c-4,8 -18,6 -14,-10Z M18,-214 c6,-2 10,4 6,8 c-6,3 -10,-4 -6,-8Z" fill="#4a1512" opacity=".6"/>';
+    /* shadow half (away from the light) */
+    var shadowHalf = lt > 0 ? "M-80,-330 L4,-330 L-2,-170 L-80,-170Z" : "M80,-330 L-4,-330 L2,-170 L80,-170Z";
+    var cid = k.uid("bk");
+    s += '<defs><clipPath id="' + cid + '"><path d="' + torso + '"/></clipPath></defs><g clip-path="url(#' + cid + ')">' +
+      P(shadowHalf, "#1e1626", null, 0, 'opacity=".22"') + R.tone(k, shadowHalf, .3) + "</g>";
+    if (!of.gown && !of.jacket) {
+      s += P("M-41,-190 C-20,-187 20,-187 41,-190", "none", "#1d1612", 8);
+      if (of.keys) s += '<circle cx="34" cy="-178" r="7" fill="none" stroke="#b8b1a0" stroke-width="2.5"/>' + P("M30,-172 l-3,13 M35,-171 l1,13 M39,-173 l5,10", "none", "#cfc8b4", 3);
+    }
+    /* shoulders rising into the neck (rounder and higher as he stoops), then the collar */
+    var tr = -326 + hunch;
+    s += P("M-50,-300 C-40,-314 -28," + f(tr + 4) + " -18," + f(tr) + " L18," + f(tr) + " C28," + f(tr + 4) + " 40,-314 50,-300 C30,-306 -30,-306 -50,-300Z", shirt, null, 0);
+    s += P("M-50,-300 C-40,-314 -28," + f(tr + 4) + " -18," + f(tr) + " M18," + f(tr) + " C28," + f(tr + 4) + " 40,-314 50,-300", "none", INK, lw);
+    if (hunch > 4) s += P("M-30," + f(-296 + hunch * .2) + " C-10," + f(-306 + hunch * .1) + " 10," + f(-306 + hunch * .1) + " 30," + f(-296 + hunch * .2), "none", INK, 1.6, 'opacity=".5"');
+    if (of.jacket) s += P("M-26," + f(tr + 6) + " C-10," + f(tr - 4) + " 10," + f(tr - 4) + " 26," + f(tr + 6) + " L24," + f(tr + 18) + " C8," + f(tr + 12) + " -8," + f(tr + 12) + " -24," + f(tr + 18) + "Z", mix(shirt, INK, .15), INK, lw * .6) +
+      P("M-10," + f(tr) + " C-4," + f(tr - 3) + " 4," + f(tr - 3) + " 10," + f(tr), "none", of.under || "#efe8d8", 3);
+    else if (!of.gown) s += P("M-24," + f(tr + 4) + " C-10," + f(tr - 4) + " 10," + f(tr - 4) + " 24," + f(tr + 4) + " L22," + f(tr + 14) + " C8," + f(tr + 9) + " -8," + f(tr + 9) + " -22," + f(tr + 14) + "Z", mix(shirt, "#fff", .1), INK, lw * .6);
+    /* arms + backs of the hands */
+    var holds = [o.holdL, o.holdR];
+    pose.arms.forEach(function (A, i) {
+      var el = A[1], hd = A[2], wr = [hd[0] + (el[0] - hd[0]) * .2, hd[1] + (el[1] - hd[1]) * .2];
+      if (holds[i]) s += '<g transform="translate(' + f(hd[0]) + "," + f(hd[1]) + ')">' + holds[i] + "</g>";
+      s += tube([A[0], el, wr], 27, 21, shirt, lw, { bulge: 2, shade: (i === 0) === (lt > 0) ? -1 : 0 });
+      s += P("M" + f(el[0] - 8) + "," + f(el[1] - 4) + " q6,5 14,2", "none", INK, 1.5, 'opacity=".5"');
+      var ang = Math.atan2(hd[1] - el[1], hd[0] - el[0]) * 180 / Math.PI - 90;
+      s += '<g transform="translate(' + f(wr[0]) + "," + f(wr[1]) + ") rotate(" + f(ang) + ')">' +
+        P("M-12,-2 C-14,10 -12,26 -9,38 C-7,46 -2,48 0,43 C2,50 8,50 10,43 C13,46 17,42 16,34 C17,22 16,8 12,-2Z", skin, INK, lw * .8) +
+        P("M-4,22 C-4,30 -3,36 -2,42 M5,22 C5,30 6,36 6,42", "none", INK, 1.6, 'opacity=".75"') +
+        P("M-8,12 q4,-3 8,0 M2,12 q4,-3 8,0", "none", mix(skin, "#5a3a3a", .4), 1.6) + "</g>";
+    });
+    /* rim light on the lit side */
+    if (rim) {
+      var sd = lt > 0 ? 1 : -1, A = pose.arms[lt > 0 ? 1 : 0], Lg = pose.legs[lt > 0 ? 1 : 0];
+      s += P("M" + (46 * sd) + ",-305 C" + (60 * sd) + ",-286 " + (64 * sd) + ",-268 " + f(A[1][0] + 13 * sd) + "," + f(A[1][1]) + " L" + f(A[2][0] + 12 * sd) + "," + f(A[2][1]), "none", rim, 2.6, 'opacity=".9"');
+      s += P("M" + f(Lg[0][0] + 17 * sd) + ",-182 L" + f(Lg[1][0] + 17 * sd) + "," + f(Lg[1][1]) + " L" + f(Lg[2][0] + 15 * sd) + "," + f(Lg[2][1] - 12), "none", rim, 2.4, 'opacity=".85"');
+    }
+    /* back of the head (no face): skull, ears, hair by style */
+    var ht = o.headTurn || 0, skull = "M-47,-22 C-49,-70 -26,-82 0,-82 C26,-82 49,-70 47,-22 C48,8 44,32 34,46 C20,54 -20,54 -34,46 C-44,32 -48,8 -47,-22Z";
+    var hd = "";
+    [-1, 1].forEach(function (sd2) {
+      var ex = sd2 * 45 + ht * 6;
+      hd += P("M" + f(ex) + ",-22 C" + f(ex + sd2 * 18) + ",-32 " + f(ex + sd2 * 22) + ",10 " + f(ex - sd2) + ",16Z", mix(skin, "#c9614a", .3), INK, 5);
+      hd += P("M" + f(ex + sd2 * 5) + ",-14 C" + f(ex + sd2 * 12) + ",-16 " + f(ex + sd2 * 12) + ",4 " + f(ex + sd2 * 4) + ",8", "none", INK, 2.4);
+    });
+    hd += P(skull, skin, INK, 6);
+    hd += P(skull, "#2a1a26", null, 0, 'opacity=".18"');
+    if (c.must && Math.abs(ht) > .2) {
+      var mx = ht > 0 ? 44 : -44;
+      hd += P("M" + mx + ",30 c" + (ht > 0 ? 8 : -8) + ",6 " + (ht > 0 ? 6 : -6) + ",16 " + (ht > 0 ? 2 : -2) + ",20", mix(c.hair, "#d9d4ca", Math.min(1, (c.grey || 0) * .7 + w * .8)), INK, 3);
+    }
+    if (c.hairStyle === "fringe") {
+      /* a band of fringe from ear to ear, ragged where it meets the bare nape */
+      hd += P("M-48,-30 C-50,-10 -46,8 -40,20 l6,-3 l5,6 l6,-5 l6,6 l6,-4 l7,5 l6,-5 l6,5 l6,-6 l5,5 l6,-4 C46,8 50,-10 48,-30 C40,-18 28,-10 14,-8 C6,-7 -6,-7 -14,-8 C-28,-10 -40,-18 -48,-30Z", hair, INK, 5);
+      hd += P("M-40,-12 c2,8 4,16 8,24 M-24,-4 c2,8 3,16 6,22 M-6,-2 c0,8 1,16 2,22 M12,-2 c0,8 -1,16 -2,22 M28,-6 c-2,8 -3,16 -6,22 M42,-14 c-2,8 -4,16 -8,24", "none", mix(hair, INK, .4), 2, 'opacity=".55"');
+      hd += P("M-30,26 C-16,34 16,34 30,26", "none", mix(skin, "#5a3a3a", .45), 2.5, 'opacity=".6"');
+      var wisps = Math.max(0, Math.round(3 - w * 3));
+      if (wisps) hd += P(["M-22,-74 C-14,-88 0,-86 6,-74", "M-6,-78 C2,-92 16,-90 22,-76", "M8,-70 C16,-82 28,-78 32,-66"].slice(0, wisps).join(" "), "none", hair, 4.5);
+      hd += P("M-18,-62 C-6,-70 10,-70 20,-62", "none", "#fff6c8", 5, 'opacity=".25"');
+    } else if (c.hairStyle === "young" || c.hairStyle === "full") {
+      hd += P("M-50,-20 C-56,-70 -30,-90 0,-90 C30,-90 56,-70 50,-20 C50,10 44,30 32,44 l-6,-4 l-6,6 l-6,-5 l-7,5 l-7,-5 l-7,5 l-6,-6 l-6,4 C-44,30 -50,10 -50,-20Z", hair, INK, 5);
+      hd += P("M-30,-70 C-26,-40 -24,-10 -20,30 M0,-84 C2,-50 2,-10 0,34 M30,-70 C26,-40 24,-10 20,30", "none", mix(hair, INK, .4), 2, 'opacity=".5"');
+    } else if (c.hairStyle === "long") {
+      hd += P("M-50,-20 C-56,-74 -28,-92 0,-92 C28,-92 56,-74 50,-20 C56,40 60,90 50,140 C20,150 -20,150 -50,140 C-60,90 -56,40 -50,-20Z", hair, INK, 5);
+      hd += P("M-30,-60 C-34,0 -32,60 -28,130 M0,-80 C0,0 2,70 0,140 M30,-60 C34,0 32,60 28,130", "none", mix(hair, INK, .4), 2, 'opacity=".5"');
+    }
+    if (rim) {
+      var rs = lt > 0 ? 1 : -1;
+      hd += P("M" + (47 * rs) + ",-22 C" + (48 * rs) + ",8 " + (44 * rs) + ",32 " + (34 * rs) + ",46 M" + (30 * rs) + ",-74 C" + (44 * rs) + ",-62 " + (49 * rs) + ",-44 " + (47 * rs) + ",-24", "none", rim, 4, 'opacity=".95"');
+    }
+    s += '<g transform="translate(' + f(2 + ht * 4) + "," + f(-356 + hunch * 1.25) + ') scale(.54)">' + hd + "</g>";
+    return '<g ' + T(o) + (o.op != null ? ' opacity="' + o.op + '"' : "") + ">" + s + "</g>";
   };
 })(typeof window !== "undefined" ? window : globalThis);
