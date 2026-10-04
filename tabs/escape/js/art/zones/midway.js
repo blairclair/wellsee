@@ -156,6 +156,14 @@ function neonSprite(text, size, color) {
     g.shadowBlur = 3; g.lineWidth = 1.1; g.strokeStyle = "rgba(255,255,255,.85)"; g.strokeText(text, cx, cy);
   });
 }
+// a bulb with a hot white core: reads as a light source from far away (glowSprite is only a soft halo)
+function bulbSprite(color) {
+  return sprite("mwbulb" + color, 48, 48, (g, w) => {
+    const r = w / 2, gr = g.createRadialGradient(r, r, 0, r, r, r);
+    gr.addColorStop(0, "rgba(255,255,255,1)"); gr.addColorStop(0.12, rgba(color, 1)); gr.addColorStop(0.3, rgba(color, 0.35)); gr.addColorStop(1, rgba(color, 0));
+    g.fillStyle = gr; g.fillRect(0, 0, w, w);
+  });
+}
 function drawNeon(ctx, text, size, color, x, y, a) {
   const s = neonSprite(text, size, color);
   ctx.globalAlpha = a; ctx.drawImage(s, x - s.width / 6, y - s.height / 6, s.width / 3, s.height / 3);
@@ -654,30 +662,43 @@ function glow(ctx, game, t, view, box) {
     ctx.save();
     ctx.beginPath(); ctx.rect(box.x0, box.y0, box.x1 - box.x0, box.y1 - box.y0); ctx.rect(0, 0, mw, mh); ctx.clip("evenodd");
     if (box.y0 < 0) {
-      const hz = ctx.createLinearGradient(0, -120, 0, 0); hz.addColorStop(0, "rgba(255,40,120,0)"); hz.addColorStop(1, "rgba(255,60,90,.22)");
-      ctx.globalAlpha = 1; ctx.fillStyle = hz; ctx.fillRect(box.x0, Math.max(box.y0, -120), box.x1 - box.x0, Math.min(0, box.y1) - Math.max(box.y0, -120));
+      // the sky over the fairground glows like a fever: carnival light pollution on the clouds
+      const hz = ctx.createLinearGradient(0, -200, 0, 0); hz.addColorStop(0, "rgba(120,20,90,0)"); hz.addColorStop(0.6, "rgba(200,40,110,.18)"); hz.addColorStop(1, "rgba(255,90,60,.34)");
+      ctx.globalAlpha = 1; ctx.fillStyle = hz; ctx.fillRect(box.x0, Math.max(box.y0, -200), box.x1 - box.x0, Math.min(0, box.y1) - Math.max(box.y0, -200));
       const spin = t * (red ? 0.01 : 0.06);
       for (const r of sky(L)) {
-        if (r.kind === "wheel" && r.x + r.R > box.x0 && r.x - r.R < box.x1) {
+        if (r.kind === "wheel" && r.x + r.R + 20 > box.x0 && r.x - r.R - 20 < box.x1) {
           const s = wheelSprite(r.R, true);
-          ctx.save(); ctx.translate(r.x, r.cy); ctx.rotate(spin); ctx.globalAlpha = 0.5; ctx.drawImage(s, -s.width / 4, -s.height / 4, s.width / 2, s.height / 2); ctx.restore();
-          for (let i = 0; i < 16; i++) {
-            const a = spin + i / 16 * TAU, on = step < 0 || (i + step) % 3 !== 0;
-            ctx.globalAlpha = on ? 0.6 : 0.2; ctx.drawImage(glowSprite(i % 2 ? C.yel : C.pink), r.x + Math.cos(a) * r.R - 7, r.cy + Math.sin(a) * r.R - 7, 14, 14);
+          ctx.save(); ctx.translate(r.x, r.cy); ctx.rotate(spin); ctx.globalAlpha = 0.9; ctx.drawImage(s, -s.width / 4, -s.height / 4, s.width / 2, s.height / 2); ctx.restore();
+          ctx.globalAlpha = 0.5; ctx.drawImage(glowSprite(C.pink), r.x - r.R * 1.3, r.cy - r.R * 1.3, r.R * 2.6, r.R * 2.6);
+          for (let i = 0; i < 24; i++) { // rim bulbs chase; one in three dark at a time
+            const a = spin + i / 24 * TAU, on = step < 0 || (i + step) % 3 !== 0;
+            ctx.globalAlpha = on ? 0.95 : 0.25; ctx.drawImage(bulbSprite(i % 2 ? C.yel : C.pink), r.x + Math.cos(a) * r.R - 7, r.cy + Math.sin(a) * r.R - 7, 14, 14);
+          }
+          for (let i = 0; i < 8; i++) { // lit gondolas: little windows, nobody in them... mostly
+            const a = spin + i / 8 * TAU, gx = r.x + Math.cos(a) * r.R, gy = r.cy + Math.sin(a) * r.R;
+            ctx.globalAlpha = 0.75; ctx.fillStyle = i % 2 ? C.cyan : C.org; ctx.fillRect(gx - 4, gy + 3, 8, 4);
+            if (i === 3) { ctx.fillStyle = "#fff"; ctx.fillRect(gx - 2, gy + 4, 1, 1); ctx.fillRect(gx + 1, gy + 4, 1, 1); } // someone's still up there
           }
         } else if (r.kind === "coaster" && r.x1 > box.x0 && r.x0 < box.x1) {
-          const gc = glowSprite(C.cyan);
-          for (let x = r.x0; x <= r.x1; x += 16) { ctx.globalAlpha = 0.45; ctx.drawImage(gc, x - 6, coasterY(r, x) - 6, 12, 12); }
+          ctx.globalAlpha = 0.85; ctx.strokeStyle = C.cyan; ctx.lineWidth = 1.2; ctx.beginPath();
+          for (let x = r.x0; x <= r.x1; x += 6) { const y = coasterY(r, x); x === r.x0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); } ctx.stroke();
+          const gc = bulbSprite(C.cyan);
+          for (let x = r.x0, i = 0; x <= r.x1; x += 16, i++) { ctx.globalAlpha = step < 0 || (i + step) % 4 ? 0.8 : 0.2; ctx.drawImage(gc, x - 5, coasterY(r, x) - 5, 10, 10); }
         } else if (r.kind === "tent" && r.x + r.w > box.x0 && r.x - r.w < box.x1) {
-          const gb = glowSprite(C.yel);
-          for (let i = 0; i <= 6; i++) { const k = i / 6; ctx.globalAlpha = 0.35; ctx.drawImage(gb, r.x - r.w / 2 * k - 5, -r.h * (1 - k) - 5, 10, 10); ctx.drawImage(gb, r.x + r.w / 2 * k - 5, -r.h * (1 - k) - 5, 10, 10); }
+          // stripes catch the glow; bulb strings run down both eaves
+          ctx.globalAlpha = 0.28;
+          for (let i = 0; i < 6; i += 2) { ctx.fillStyle = i % 4 ? C.yel : C.red; ctx.beginPath(); ctx.moveTo(r.x, -r.h); ctx.lineTo(r.x - r.w / 2 + i * r.w / 6, 0); ctx.lineTo(r.x - r.w / 2 + (i + 1) * r.w / 6, 0); ctx.fill(); }
+          const gb = bulbSprite(C.yel);
+          for (let i = 0; i <= 6; i++) { const k = i / 6; ctx.globalAlpha = 0.7; ctx.drawImage(gb, r.x - r.w / 2 * k - 4, -r.h * (1 - k) - 4, 8, 8); ctx.drawImage(gb, r.x + r.w / 2 * k - 4, -r.h * (1 - k) - 4, 8, 8); }
         }
       }
     }
     for (const c of canopies(L)) {
       if (c.x + c.r < box.x0 || c.x - c.r > box.x1 || c.y + c.r < box.y0 || c.y - c.r > box.y1) continue;
-      const g = glowSprite(c.col);
-      for (let i = 0; i < 14; i++) { const a = i / 14 * TAU, on = step < 0 || (i + step) % 3 !== 1; ctx.globalAlpha = on ? 0.5 : 0.15; ctx.drawImage(g, c.x + Math.cos(a) * c.r - 7, c.y + Math.sin(a) * c.r - 7, 14, 14); }
+      ctx.globalAlpha = 0.4; ctx.drawImage(canopySprite(c.r, c.col), c.x - c.r - 6, c.y - c.r - 6, (c.r + 6) * 2, (c.r + 6) * 2); // the stripes show through the dark
+      const g = bulbSprite(c.col);
+      for (let i = 0; i < 14; i++) { const a = i / 14 * TAU, on = step < 0 || (i + step) % 3 !== 1; ctx.globalAlpha = on ? 0.85 : 0.2; ctx.drawImage(g, c.x + Math.cos(a) * c.r - 6, c.y + Math.sin(a) * c.r - 6, 12, 12); }
     }
     ctx.restore();
   }
