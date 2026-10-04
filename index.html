@@ -7,10 +7,14 @@
 <meta name="description" content="The legacy tale of the Wellsee Carnival. Still they come.">
 <link rel="stylesheet" href="assets/site.css">
 <style>
+  /* Let the column layout give the hero whatever height the nav leaves,
+     rather than subtracting a guessed nav height (it wraps on phones). */
+  body.home { display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; }
+  body.home #site-nav { flex: none; }
   .hero {
-    position: relative; min-height: calc(100vh - 3.25rem);
+    position: relative; flex: 1 0 auto;
     display: grid; place-items: center; text-align: center;
-    overflow: hidden; padding: 2rem 1rem 4rem;
+    overflow: hidden; padding: 2rem 1rem clamp(7rem, 22vh, 11rem);
   }
   .hero svg.scene { position: absolute; inset: 0; width: 100%; height: 100%; }
   .hero .words { position: relative; max-width: 40rem; }
@@ -48,9 +52,20 @@
     border: 1px solid #f6d27a55; padding: .7rem 1.4rem; display: inline-block;
     background: #07060acc; transition: box-shadow .4s; }
   .enter a:hover { box-shadow: 0 0 30px #f6d27a44; }
+  @media (max-width: 640px) {
+    body.home #site-nav { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none;
+      -webkit-mask-image: linear-gradient(90deg, #000 85%, transparent);
+              mask-image: linear-gradient(90deg, #000 85%, transparent); }
+    body.home #site-nav::-webkit-scrollbar { display: none; }
+    body.home #site-nav ul { flex-wrap: nowrap; white-space: nowrap; }
+    .hero { padding-bottom: 6.5rem; }
+    .hero h1 { margin-bottom: 1rem; }
+    .hero p.last { margin-top: 1.2rem; }
+    .enter { margin-top: 1.6rem; }
+  }
 </style>
 </head>
-<body>
+<body class="home">
 <nav id="site-nav"></nav>
 
 <main class="hero">
@@ -97,9 +112,11 @@
       <circle class="bulb" cx="300" cy="600" r="3"/><circle class="bulb" cx="360" cy="590" r="3"/>
       <circle class="bulb" cx="840" cy="590" r="3"/><circle class="bulb" cx="900" cy="600" r="3"/>
     </g>
+    <!-- ground, so the bottom edge reads as earth, not a crop -->
+    <path d="M0 772 Q300 760 600 768 T1200 766 L1200 800 L0 800 Z" fill="#0b0709"/>
     <!-- small figure walking toward the light -->
     <g fill="#000" opacity=".9">
-      <ellipse cx="600" cy="782" rx="7" ry="9"/><rect x="595" y="790" width="10" height="10"/>
+      <ellipse cx="600" cy="752" rx="7" ry="9"/><rect x="595" y="760" width="10" height="12"/>
     </g>
     <rect width="1200" height="800" filter="url(#fog)" opacity=".5"/>
     <rect width="1200" height="800" filter="url(#grain)" opacity=".35"/>
