@@ -358,9 +358,12 @@ function aimAtNearest(game, range, cone) {
 /* ================================================================ camera */
 /** Zoom so roughly 15x10 tiles are visible; follow the player, clamp to map. */
 export function updateCamera(cam, game, W, H, dt, snap = false) {
-  cam.zoom = Math.max(0.85, Math.min(W / (TILE * 15), H / (TILE * 10), 2.4));
+  // phones: zoom floor 1.0 (faces stay readable) with a longer look-ahead in the movement
+  // direction, so the next fork or exit still comes into view early enough to choose
+  const phone = W < 500;
+  cam.zoom = Math.max(phone ? 1.0 : 0.85, Math.min(W / (TILE * 15), H / (TILE * 10), 2.4));
   const vw = W / cam.zoom, vh = H / cam.zoom, p = game.player;
-  const lead = 30;
+  const lead = phone ? 72 : 30;
   let tx = p.x + Math.cos(p.face) * (p.moving ? lead : 0) - vw / 2;
   let ty = p.y - 14 + Math.sin(p.face) * (p.moving ? lead : 0) - vh / 2;
   // overscroll past the map edges so the HUD bars never cover the player

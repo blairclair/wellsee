@@ -134,7 +134,8 @@ export const ENEMIES = {
     unique: true, name: "Tobias Fenn", behavior: "hunter", r: 15, speed: 86, accel: 500,
     sense: 320, stunMul: 0.8, mass: 1.8, damage: 24, dreadAura: 4,
     lore: "The dairyman in overalls, white handprints on the bib. Slow. When he takes hold of something, he does not let go.",
-    onCatch(e, api) { api.status("stuck", 0.7); api.toast("Tobias Fenn holds on, the way he held the arms of that chair."); },
+    // he holds you (stuck), then sits back down for a moment: a hard grab, never a chain of them
+    onCatch(e, api) { api.status("stuck", 0.7); e.stun = 1.7; api.toast("Tobias Fenn holds on, the way he held the arms of that chair."); },
   },
   sam: {
     unique: true, name: "Samuel Hale", behavior: "hunter", r: 13, speed: 160, accel: 260,
@@ -169,7 +170,7 @@ export const ENEMIES = {
   },
   rabbit: {
     name: "Morphed Rabbit", behavior: "hopper", r: 11, speed: 0, accel: 0, hop: 420,
-    hopEvery: 1.0, sense: 170, stunMul: 1.2, mass: 0.6, damage: 12, dreadAura: 1,
+    hopEvery: 1.0, sense: 170, stunMul: 1.2, mass: 0.6, damage: 10, dreadAura: 1,
     lore: "Too many teeth. Too many legs. Still twitches its nose.",
   },
 };
@@ -574,7 +575,7 @@ export const LEVELS = {
     name: "The Petting Pen", tag: "long, and something is feeding",
     blurb: "The long way round, through the pens. The rabbits were sweet once. There is food left in the troughs, and things worth carrying. It takes time. Time is what the tents want.",
     base: "grass", ambient: 0.86, length: 4, threat: 2,
-    pressure: { every: 28, max: 4, types: ["unwilling", "eli", "tobias"] },
+    pressure: { every: 32, max: 4, types: ["unwilling", "eli", "unwilling"] },
     palette: { fog: "#1c2a10", tint: "#9dff6a" },
     map: [
       "################################################################################",
