@@ -188,3 +188,7 @@ figure.photo[tabindex]:focus { outline: 2px dashed var(--redink); outline-offset
   .margin { font-size: 1.3rem; }
   .coffee { display: none; }
 }
+
+/* ---------- evidence photos: Dorothy Kemp, Carl Dewey, File closed, Lund's desk, the Polaroid, the uncatalogued card ---------- */
+/* the 1987 instant print: faded dye colour, not a sepia silver print */
+figure.polaroid svg.pol-svg { filter: sepia(.18) saturate(.8) contrast(1.08) brightness(1.04); }
