@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Wellsee Carnival</title>
+<meta name="description" content="The legacy tale of the Wellsee Carnival. Still they come.">
+<link rel="stylesheet" href="assets/site.css">
+<style>
+  .hero {
+    position: relative; min-height: calc(100vh - 3.25rem);
+    display: grid; place-items: center; text-align: center;
+    overflow: hidden; padding: 2rem 1rem 4rem;
+  }
+  .hero svg.scene { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .hero .words { position: relative; max-width: 40rem; }
+  .hero h1 {
+    font-family: var(--caps); font-weight: normal;
+    font-size: clamp(2.4rem, 8vw, 5rem); line-height: 1; margin: 0 0 1.5rem;
+    color: var(--bulb); letter-spacing: .06em;
+    text-shadow: 0 0 24px #f6d27a55, 0 0 2px #000;
+    animation: gutter 7s infinite steps(1);
+  }
+  .hero p { margin: .4rem 0; color: var(--ink); text-shadow: 0 1px 6px #000; }
+  .hero p.quiet { color: var(--ink-dim); font-style: italic; }
+  .hero p.last { margin-top: 2rem; font-family: var(--caps); color: var(--blood); letter-spacing: .2em; }
+  .fade { opacity: 0; animation: rise 2.4s forwards; }
+  .fade:nth-child(2) { animation-delay: 1.2s; }
+  .fade:nth-child(3) { animation-delay: 2.6s; }
+  .fade:nth-child(4) { animation-delay: 4s; }
+  .fade:nth-child(5) { animation-delay: 6s; }
+  .fade:nth-child(6) { animation-delay: 7.5s; }
+  @keyframes rise { to { opacity: 1; } }
+  @keyframes gutter {
+    0%, 91%, 95%, 100% { opacity: 1; }
+    92%, 94% { opacity: .25; }
+  }
+  .bulb { animation: flick 3s infinite; }
+  .bulb:nth-of-type(3n) { animation-delay: .7s; }
+  .bulb:nth-of-type(4n) { animation-duration: 5s; }
+  .bulb:nth-of-type(7n) { animation: dead 9s infinite; }
+  @keyframes flick { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+  @keyframes dead { 0%, 80% { opacity: .1; } 82% { opacity: 1; } 84%, 100% { opacity: .1; } }
+  .eyes { animation: blink 6s infinite; transform-box: fill-box; transform-origin: center; }
+  @keyframes blink { 0%, 96%, 100% { transform: scaleY(1); } 98% { transform: scaleY(.1); } }
+  .enter { margin-top: 2.5rem; }
+  .enter a { font-family: var(--caps); letter-spacing: .15em; text-decoration: none;
+    border: 1px solid #f6d27a55; padding: .7rem 1.4rem; display: inline-block;
+    background: #07060acc; transition: box-shadow .4s; }
+  .enter a:hover { box-shadow: 0 0 30px #f6d27a44; }
+</style>
+</head>
+<body>
+<nav id="site-nav"></nav>
+
+<main class="hero">
+  <svg class="scene" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+    <defs>
+      <radialGradient id="glow" cx="50%" cy="78%" r="55%">
+        <stop offset="0" stop-color="#d9822b" stop-opacity=".35"/>
+        <stop offset=".5" stop-color="#8b1414" stop-opacity=".12"/>
+        <stop offset="1" stop-color="#07060a" stop-opacity="0"/>
+      </radialGradient>
+      <filter id="grain"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" stitchTiles="stitch"/>
+        <feColorMatrix values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .5 0"/></filter>
+      <filter id="fog"><feTurbulence type="fractalNoise" baseFrequency=".008 .03" numOctaves="3" seed="4"/>
+        <feColorMatrix values="0 0 0 0 .6  0 0 0 0 .55  0 0 0 0 .5  0 0 0 .5 -.1"/></filter>
+    </defs>
+    <rect width="1200" height="800" fill="#07060a"/>
+    <rect width="1200" height="800" fill="url(#glow)"/>
+    <!-- dead trees -->
+    <path d="M80 800 L95 520 L60 430 M95 520 L140 410 M90 600 L30 540 M1120 800 L1105 500 L1150 400 M1105 560 L1050 470"
+          stroke="#140f12" stroke-width="10" fill="none" stroke-linecap="round"/>
+    <!-- big top silhouette -->
+    <g fill="#120b0e">
+      <path d="M600 330 L370 560 L370 800 L830 800 L830 560 Z"/>
+      <path d="M600 330 L240 600 L240 800 L960 800 L960 600 Z" opacity=".85"/>
+      <rect x="597" y="290" width="6" height="45"/>
+      <path d="M603 292 L640 302 L603 312 Z" fill="#5a0f0f"/>
+    </g>
+    <!-- stripes -->
+    <g stroke="#1e1216" stroke-width="16">
+      <line x1="600" y1="335" x2="440" y2="800"/><line x1="600" y1="335" x2="540" y2="800"/>
+      <line x1="600" y1="335" x2="660" y2="800"/><line x1="600" y1="335" x2="760" y2="800"/>
+    </g>
+    <!-- entrance mouth -->
+    <path d="M545 800 L545 690 Q600 620 655 690 L655 800 Z" fill="#000"/>
+    <g class="eyes" fill="#f6d27a"><circle cx="585" cy="715" r="2.2"/><circle cx="605" cy="715" r="2.2"/></g>
+    <!-- bulb strings -->
+    <g fill="#f6d27a">
+      <circle class="bulb" cx="600" cy="335" r="4"/>
+      <circle class="bulb" cx="560" cy="374" r="3.5"/><circle class="bulb" cx="520" cy="413" r="3.5"/>
+      <circle class="bulb" cx="480" cy="452" r="3.5"/><circle class="bulb" cx="440" cy="491" r="3.5"/>
+      <circle class="bulb" cx="400" cy="530" r="3.5"/><circle class="bulb" cx="640" cy="374" r="3.5"/>
+      <circle class="bulb" cx="680" cy="413" r="3.5"/><circle class="bulb" cx="720" cy="452" r="3.5"/>
+      <circle class="bulb" cx="760" cy="491" r="3.5"/><circle class="bulb" cx="800" cy="530" r="3.5"/>
+      <circle class="bulb" cx="300" cy="600" r="3"/><circle class="bulb" cx="360" cy="590" r="3"/>
+      <circle class="bulb" cx="840" cy="590" r="3"/><circle class="bulb" cx="900" cy="600" r="3"/>
+    </g>
+    <!-- small figure walking toward the light -->
+    <g fill="#000" opacity=".9">
+      <ellipse cx="600" cy="782" rx="7" ry="9"/><rect x="595" y="790" width="10" height="10"/>
+    </g>
+    <rect width="1200" height="800" filter="url(#fog)" opacity=".5"/>
+    <rect width="1200" height="800" filter="url(#grain)" opacity=".35"/>
+  </svg>
+
+  <div class="words">
+    <h1 class="fade">The Wellsee Carnival</h1>
+    <p class="fade">Where the rabbits morphed to monsters, and men screamed until their lungs collapsed.</p>
+    <p class="fade quiet">And all the bugs went silent. Completely, totally silent.</p>
+    <p class="fade">And still people come.</p>
+    <p class="fade last">One does not refuse the carnival when its light shines upon them.<br>There are fates worse than death.</p>
+    <div class="enter fade" id="enter"></div>
+  </div>
+</main>
+
+<script src="assets/tabs.js"></script>
+<script src="assets/nav.js" data-active="home"></script>
+<script>
+  var first = (window.WELLSEE_TABS || []).filter(function (t) { return t.ready; })[0];
+  document.getElementById("enter").innerHTML = first
+    ? '<a href="' + first.path + '">Step into the light</a>'
+    : '<span style="color:var(--ink-dim);font-style:italic">The gates are not yet open. Listen for the bugs.</span>';
+</script>
+</body>
+</html>

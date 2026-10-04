@@ -1,0 +1,43 @@
+/* Shared base. Tabs layer their own stylesheet on top; keep this small. */
+@import url("https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&display=swap");
+
+:root {
+  --ink: #e8dcc4;
+  --ink-dim: #9c8f78;
+  --void: #07060a;
+  --blood: #8b1414;
+  --ember: #d9822b;
+  --bulb: #f6d27a;
+  --serif: "IM Fell English", Georgia, serif;
+  --caps: "IM Fell English SC", Georgia, serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--void);
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: 1.125rem;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+a { color: var(--bulb); }
+
+#site-nav {
+  position: sticky; top: 0; z-index: 50;
+  display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap;
+  padding: .75rem 1rem;
+  background: linear-gradient(#07060af2, #07060acc);
+  border-bottom: 1px solid #2a1f1f;
+  font-family: var(--caps);
+  letter-spacing: .08em;
+}
+#site-nav ul { display: flex; gap: 1.25rem; margin: 0; padding: 0; list-style: none; flex-wrap: wrap; }
+#site-nav a { color: var(--ink-dim); text-decoration: none; transition: color .3s, text-shadow .3s; }
+#site-nav a:hover, #site-nav a.is-active { color: var(--bulb); text-shadow: 0 0 12px #f6d27a88; }
+#site-nav .nav-sigil { color: var(--blood); font-size: 1.25rem; }
+#site-nav .is-sealed { color: #4a4038; cursor: not-allowed; text-decoration: line-through; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}

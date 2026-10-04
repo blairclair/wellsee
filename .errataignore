@@ -1,0 +1,20 @@
+# .errataignore — the hard control over what errata may read or send.
+# Paths, content keywords and tags listed here are dropped from hunks and
+# narrative before anything leaves this machine, and an ignored path yields no
+# symbol anchor at all. Scrubbing is best effort; this list is absolute.
+# A personal list can only add to the organization's list, never weaken it.
+
+# secrets and environment
+.env
+.env.*
+*.pem
+*.key
+*.p12
+secrets/
+credentials*
+
+# fixtures and captured data
+fixtures/
+**/testdata/
+*.dump
+*.sql.gz
