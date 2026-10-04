@@ -28,9 +28,14 @@ RUSTY.panel({
         '<circle cx="' + (x - 4) + '" cy="' + (y - 13) + '" r="1.6" fill="' + INK + '"/><circle cx="' + (x + 4) + '" cy="' + (y - 13) + '" r="1.6" fill="' + INK + '"/>';
     }
     s += crowd + R.tone(k, "M0,120 H800 V330 H0Z", .3);
+    [[330, 196], [694, 160], [96, 236]].forEach(function (c) {
+      s += R.rays(c[0], c[1], 10, 30, "#fffbe6", .9) + '<circle cx="' + c[0] + '" cy="' + c[1] + '" r="9" fill="#fffbe6" stroke="' + INK + '" stroke-width="1.5"/>';
+    });
+    s += P("M300,150 l-4,-10 M314,146 l2,-10 M420,190 l-4,-10 M434,186 l2,-10 M650,226 l-4,-10 M664,222 l2,-10", "none", INK, 2);   /* heads turning */
     /* banner */
-    s += '<g transform="rotate(-2 400 100)">' + P("M180,70 H620 L606,92 L620,114 H180 L194,92Z", "#efe4c8", INK, 3) +
-      '<text x="400" y="101" text-anchor="middle" font-family="Bangers, sans-serif" font-size="28" letter-spacing="3" fill="#5a3a20">CONGRATULATIONS CLASS OF 2016</text></g>';
+    s += '<g transform="rotate(-3 240 96)">' + P("M24,72 H444 L430,94 L444,116 H24 L38,94Z", "#efe4c8", INK, 3) +
+      '<text x="234" y="104" text-anchor="middle" font-family="Bangers, sans-serif" font-size="27" letter-spacing="2" fill="#5a3a20">CONGRATULATIONS CLASS OF 2016</text></g>';
+    s += P("M30,72 L20,40 M440,74 L452,40", "none", INK, 2);
     /* field */
     s += P("M0,330 H800 V600 H0Z", "#a8a070", INK, 3);
     s += P("M0,420 H800 M0,520 H800", "none", "#efe9da", 4, 'opacity=".6"');
