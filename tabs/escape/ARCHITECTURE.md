@@ -15,6 +15,7 @@ root with `python3 -m http.server`, then open `/tabs/escape/`.
 | `js/content.js` | **content agent** | DATA: tiles, weapons, projectiles, enemies, obstacles, items, legend, levels, route, player tuning, all story text |
 | `js/art.js` | **art agent** | every canvas pixel: tiles, entities, icons, particles, lighting, post-fx, cinematics |
 | `js/ui.js` + `ui.css` | **UI agent** | all DOM: HUD, menus, route map, touch controls, toasts, curtain transitions |
+| `js/settings.js` | **UI agent** | player preferences (`volume`, `shake`, `flash` 0/.5/1, `reduced`) and records (`best` per route, `deaths`, `wins`, `runs`) in localStorage, try/catch-wrapped; `settings`, `setSetting`, `onSettings(fn)`, `isReduced()`, `records`, `saveRecords()`, `clearRecords()` |
 | `js/audio.js` | anyone | WebAudio synth. Muted by default, toggled by the player only |
 | `tests/*.mjs` | anyone | `node tests/maps.test.mjs`, `node tests/engine.test.mjs` (no browser needed) |
 
@@ -139,7 +140,7 @@ Unknown events must be ignored by consumers, so anyone can add new ones.
 ## UI contract (ui.js)
 `createUI(root, { input, onStart, onChoose(levelId), onPause, onResume, onQuit, onRetry, onSound })` returns
 `{ show(screen|null, data), hud(game), onEvent(ev), curtain(midwayFn) -> Promise, toast(msg), setSound(on), resetHud() }`.
-Screens: `title`, `howto {back}`, `route {run}`, `intro {name, tag, index}`, `pause`, `lost {by, run}`, `won {run}`.
+Screens: `title`, `howto {back}`, `settings {back, backData}` (volume, shake, flash intensity, reduced motion; backed by `js/settings.js`), `route {run}`, `intro {name, tag, index}`, `pause`, `lost {by, run}`, `won {run}`.
 `hud()` runs every frame — keep it diffed (see `set()`). Touch controls write `input.virt`, `input.press(action)`,
 `input.held.attack`. Actions: `attack dash next prev slot0..2 pause mute confirm`.
 The nav is forced onto one line on phones by `style.css` so the stage keeps its height.
