@@ -101,7 +101,7 @@ function layout(game) {
   const fh = L.fh;
   if (fh) {
     const ey = fh.y0 + 40;
-    for (const s of [-1, 1]) L.eyes.push({ x: fh.cx + s * 52, y: ey, r: 13, ry: 12, p: 8, iris: C.mint, big: true });
+    for (const s of [-1, 1]) L.eyes.push({ x: fh.cx + s * 52, y: ey, r: 13, ry: 12, p: 8, iris: C.mint, big: true, fx: fh.cx });
   }
   if (L.pav) L.eyes.push({ x: L.pav.cx - 7, y: L.pav.cy - 6, r: 4, p: 2, iris: C.vio }, { x: L.pav.cx + 7, y: L.pav.cy - 6, r: 4, p: 2, iris: C.vio });
   layouts.set(game, L);
@@ -558,6 +558,8 @@ function canopySprite(r, col) {
 }
 
 /* ------------------------------------------------------------ ambient: wind, balloons, eyes */
+// the Fun House blinks: slowly, about every 5 s, the right eye a beat behind the left (never under reduced motion)
+const eyeShut = (e, t, view) => !view.reduced && ((t + (e.x > (e.fx || 0) ? 0.22 : 0)) % 5.3) < 0.2;
 function ambient(ctx, game, t, view, box) {
   const L = layout(game), red = view.reduced, wt = red ? t * 0.15 : t;
   const inBox = (x, y, m = 40) => x > box.x0 - m && x < box.x1 + m && y > box.y0 - m && y < box.y1 + m;
@@ -609,6 +611,12 @@ function ambient(ctx, game, t, view, box) {
     const dx = p.x - e.x, dy = (p.y - 20) - e.y, d = Math.hypot(dx, dy) || 1, k = Math.min(1, d / 120);
     const ox = dx / d * e.p * k, oy = dy / d * e.p * k * (e.ry ? e.ry / e.r : 1) * 0.8;
     if (e.big) {
+      if (eyeShut(e, t, view)) { // the lid: painted, cracked, with lashes drawn on in marker
+        ellipse(ctx, e.x, e.y, 23, 15, C.face);
+        ctx.strokeStyle = C.ink; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(e.x - 22, e.y); ctx.quadraticCurveTo(e.x, e.y + 7, e.x + 22, e.y); ctx.stroke();
+        ctx.lineWidth = 1; ctx.beginPath(); for (let k = -3; k <= 3; k++) { const lx = e.x + k * 6; ctx.moveTo(lx, e.y + 3.5 - Math.abs(k) * 0.6); ctx.lineTo(lx + k * 0.8, e.y + 8 - Math.abs(k) * 0.4); } ctx.stroke();
+        continue;
+      }
       circle(ctx, e.x + ox, e.y + oy, 8.5, e.iris); circle(ctx, e.x + ox, e.y + oy, 8.5 * 0.55, "#050204");
       circle(ctx, e.x + ox - 3, e.y + oy - 3, 2, "#fff");
     } else {
@@ -635,7 +643,7 @@ function glow(ctx, game, t, view, box) {
       ctx.globalAlpha = hot ? 0.7 : 0.22; ctx.drawImage(gy, b.x - 9, b.y - 9, 18, 18);
     });
     // a glint in each eye
-    for (const e of L.eyes) if (e.big) {
+    for (const e of L.eyes) if (e.big && !eyeShut(e, t, view)) {
       const p = game.player, dx = p.x - e.x, dy = p.y - 20 - e.y, d = Math.hypot(dx, dy) || 1, k = Math.min(1, d / 120);
       ctx.globalAlpha = 0.5; ctx.drawImage(glowSprite(C.mint), e.x + dx / d * e.p * k - 9, e.y + dy / d * e.p * k * 0.75 - 9, 18, 18);
     }
