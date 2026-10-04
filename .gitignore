@@ -10,3 +10,5 @@ AGENTS.md
 GEMINI.md
 .github/copilot-instructions.md
 .DS_Store
+__pycache__/
+*.pyc
