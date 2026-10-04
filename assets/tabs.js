@@ -4,5 +4,5 @@
    On a rebase conflict here: keep every line from both sides. */
 window.WELLSEE_TABS = [
   { slug: "about",  label: "The Legend",  path: "tabs/about/",  ready: false },
-  { slug: "clowns", label: "The Players", path: "tabs/clowns/", ready: false },
+  { slug: "clowns", label: "The Unwilling", path: "tabs/clowns/", ready: true },
 ];

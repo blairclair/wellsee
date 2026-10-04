@@ -1,0 +1,190 @@
+/* The Unwilling — State Bureau File 31-W.
+   Layers on ../../assets/site.css. Paper cards carry dark ink (high contrast);
+   the void between them carries the red string. */
+@import url("https://fonts.googleapis.com/css2?family=Special+Elite&family=Caveat:wght@500;700&display=swap");
+
+:root {
+  --paper: #e7dabd;
+  --paper-2: #dccdab;
+  --paper-dark: #cdbb94;
+  --type: #241b13;
+  --type-dim: #4f4232;
+  --redink: #8a1b13;
+  --pencil: #3b3a44;
+  --string: #a3201a;
+  --typewriter: "Special Elite", "Courier New", monospace;
+  --hand: "Caveat", "Segoe Print", cursive;
+}
+
+main.file { overflow-x: clip; padding: 0 16px 6rem; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------- cover ---------- */
+.cover {
+  max-width: 46rem; margin: 3rem auto 2.5rem; position: relative;
+  background: linear-gradient(170deg, #c9a868, #b08f50 60%, #9b7c43);
+  color: var(--type); padding: 2.5rem 1.5rem 2rem; border-radius: 2px 6px 3px 3px;
+  box-shadow: 0 20px 50px #000c, inset 0 0 60px #6a4d2066;
+}
+.cover::before {          /* folder tab */
+  content: "31-W"; position: absolute; top: -1.6rem; left: 1.5rem;
+  background: #c4a263; padding: .25rem 1.2rem .1rem; border-radius: 6px 6px 0 0;
+  font-family: var(--typewriter); font-size: .95rem; letter-spacing: .1em;
+}
+.cover .bureau { font-family: var(--typewriter); font-size: .85rem; letter-spacing: .12em; margin: 0; text-transform: uppercase; }
+.cover h1 {
+  font-family: var(--caps); font-weight: normal; font-size: clamp(2.4rem, 9vw, 4.2rem);
+  line-height: 1; margin: .8rem 0 .4rem; color: #1a120c; letter-spacing: .04em;
+}
+.cover .sub { font-family: var(--typewriter); font-size: .95rem; margin: 0 0 1.4rem; }
+.cover .stamp {
+  display: inline-block; font-family: var(--typewriter); color: var(--redink);
+  border: 3px double var(--redink); padding: .2rem .7rem; transform: rotate(-4deg);
+  letter-spacing: .15em; font-size: 1rem; opacity: .9;
+}
+.cover .scrawl { font-family: var(--hand); font-size: 1.55rem; line-height: 1.2; color: #2b2633; margin: 1.2rem 0 0; transform: rotate(-1deg); }
+
+.preface { max-width: 40rem; margin: 0 auto 3.5rem; color: var(--ink); }
+.preface p { margin: 0 0 1rem; }
+.preface .dim { color: var(--ink-dim); font-style: italic; }
+
+/* ---------- timeline ---------- */
+.timeline { list-style: none; margin: 0 auto; padding: 0; max-width: 72rem; position: relative; }
+.timeline::before {       /* the red string spine */
+  content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; margin-left: -1px;
+  background: repeating-linear-gradient(180deg, var(--string) 0 14px, #6d140f 14px 17px);
+  box-shadow: 0 0 6px #a3201a55;
+}
+.entry {
+  display: grid; grid-template-columns: 1fr 3.5rem 1fr; align-items: start;
+  margin: 0 0 4.5rem; position: relative;
+}
+.entry .when {
+  grid-column: 3; grid-row: 1; padding-top: 1.2rem;
+  font-family: var(--typewriter); color: var(--bulb); letter-spacing: .06em;
+}
+.entry .when time { display: block; font-size: 1.25rem; }
+.entry .when span { display: block; color: var(--ink-dim); font-size: .95rem; }
+.entry .pin {
+  grid-column: 2; grid-row: 1; justify-self: center; margin-top: 1.45rem;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #ff6b5c, #8b1414 60%, #3a0605);
+  box-shadow: 0 2px 4px #000;
+}
+.entry .card { grid-column: 1; grid-row: 1; }
+.entry:nth-child(even) .when { grid-column: 1; text-align: right; }
+.entry:nth-child(even) .card { grid-column: 3; }
+
+/* ---------- paper ---------- */
+.card {
+  position: relative; background: var(--paper); color: var(--type);
+  padding: 1.5rem 1.4rem 1.6rem; border-radius: 1px;
+  box-shadow: 0 14px 34px #000d, inset 0 0 50px #8c6d3a44;
+  background-image:
+    radial-gradient(ellipse at 90% 8%, #b8954f33, transparent 40%),
+    radial-gradient(ellipse at 8% 95%, #9a7a4533, transparent 45%);
+}
+.entry:nth-child(3n) .card { transform: rotate(.5deg); }
+.entry:nth-child(3n+1) .card { transform: rotate(-.4deg); }
+.doc-head {
+  display: flex; justify-content: space-between; gap: .5rem 1rem; flex-wrap: wrap;
+  font-family: var(--typewriter); font-size: .82rem; letter-spacing: .1em; text-transform: uppercase;
+  border-bottom: 1px solid #7b674a; padding-bottom: .4rem; margin-bottom: .9rem; color: var(--type-dim);
+}
+.card h2 { font-family: var(--caps); font-weight: normal; font-size: 1.6rem; line-height: 1.15; margin: 0 0 .7rem; color: #1b130c; }
+.card p { margin: 0 0 .9rem; }
+.card .typed, .card dl {
+  font-family: var(--typewriter); font-size: .93rem; line-height: 1.55;
+  white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.card dl { display: grid; grid-template-columns: auto 1fr; gap: .1rem .8rem; margin: 0 0 1rem; white-space: normal; }
+.card dt { color: var(--type-dim); }
+.card dd { margin: 0; }
+.card blockquote { margin: 0 0 1rem; padding: .2rem 0 .2rem 1rem; border-left: 3px solid #8a6f4a; font-style: italic; }
+.card blockquote p:last-child { margin-bottom: 0; }
+.redact { background: #120d0a; color: transparent; border-radius: 1px; padding: 0 .15em; user-select: none; }
+.coffee { position: absolute; width: 120px; height: 120px; right: -14px; bottom: -18px; border-radius: 50%;
+  border: 7px solid #6b4a2a22; box-shadow: inset 0 0 0 2px #6b4a2a18; pointer-events: none; transform: rotate(18deg) scaleX(.92); }
+
+/* handwriting: the investigator's later annotations */
+.margin {
+  font-family: var(--hand); font-weight: 500; font-size: 1.4rem; line-height: 1.25;
+  color: var(--redink); margin: 1rem 0 0; padding: .6rem .8rem; transform: rotate(-.8deg);
+  border: 1px dashed #8a1b1355; background: #f0e5ca;
+}
+.margin b { font-weight: 700; }
+.margin.pencil { color: var(--pencil); border-color: #3b3a4455; }
+
+/* ---------- note cards (Lund's own pages) ---------- */
+.entry.note .card { background: #efe7d3; background-image: repeating-linear-gradient(180deg, transparent 0 1.85rem, #8fb3c955 1.85rem calc(1.85rem + 1px)); }
+.entry.note .card .hand { font-family: var(--hand); font-size: 1.45rem; line-height: 1.28; color: #262536; }
+.entry.note .card .hand p { margin: 0 0 .8rem; }
+
+/* ---------- evidence photographs ---------- */
+figure.photo {
+  margin: 1.2rem auto 1rem; position: relative; background: #f1e8d4; padding: 10px 10px 0;
+  box-shadow: 0 6px 16px #0007; max-width: 34rem; transform: rotate(-1.1deg);
+}
+.entry:nth-child(even) figure.photo { transform: rotate(1deg); }
+figure.photo::before {   /* tape */
+  content: ""; position: absolute; top: -12px; left: 50%; width: 92px; height: 26px; margin-left: -46px;
+  background: #e9e1c7b3; box-shadow: 0 1px 2px #0003; transform: rotate(-3deg); z-index: 2;
+}
+figure.photo .print { position: relative; overflow: hidden; line-height: 0; }
+figure.photo .print::after {   /* grain */
+  content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .38; mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .7 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+figure.photo svg { display: block; width: 100%; height: auto; filter: sepia(.55) contrast(1.06); }
+figure.photo.raw svg { filter: none; }
+figure.photo figcaption {
+  font-family: var(--typewriter); font-size: .78rem; line-height: 1.4; color: #3a2f22;
+  padding: .55rem .2rem .7rem; overflow-wrap: anywhere;
+}
+figure.photo figcaption b { color: var(--redink); font-weight: normal; letter-spacing: .08em; }
+figure.polaroid { background: #f4f1ea; padding: 12px 12px 0; max-width: 24rem; }
+figure.polaroid figcaption { font-family: var(--hand); font-size: 1.35rem; color: var(--redink); padding: .8rem .3rem 1.2rem; }
+figure.clipping { background: transparent; padding: 0; box-shadow: none; }
+figure.clipping svg { filter: drop-shadow(0 6px 10px #0008) sepia(.3); }
+figure.clipping figcaption { background: #f1e8d4; margin-top: .4rem; padding: .5rem .6rem; }
+
+/* things in the photographs you did not see the first time */
+.ghost { opacity: .07; transition: opacity 2.5s ease-in; }
+figure.photo:hover .ghost, figure.photo:focus-within .ghost, figure.photo:focus .ghost { opacity: .6; }
+figure.photo[tabindex]:focus { outline: 2px dashed var(--redink); outline-offset: 4px; }
+
+/* living details (all killed by site.css under reduced motion) */
+.blink { animation: blink 7s infinite; transform-box: fill-box; transform-origin: center; }
+.blink.b2 { animation-delay: 2.3s; animation-duration: 9s; }
+@keyframes blink { 0%, 95%, 100% { transform: scaleY(1); } 97% { transform: scaleY(.1); } }
+.glimmer { animation: glim 4s infinite; }
+@keyframes glim { 0%, 100% { opacity: .9; } 50% { opacity: .35; } }
+
+/* ---------- after the turn ---------- */
+.entry.turned .card { background-color: #ddcca6; box-shadow: 0 14px 34px #000d, inset 0 0 70px #5a1a1033; }
+.entry.turn .card { outline: 2px solid #8a1b1366; outline-offset: 6px; }
+
+/* ---------- ending ---------- */
+.ending { max-width: 38rem; margin: 2rem auto 0; text-align: center; }
+.ending p { margin: 0 0 1.1rem; }
+.ending .doors { text-align: left; border-top: 1px solid #2a1f1f; border-bottom: 1px solid #2a1f1f; padding: 1.2rem 0; margin: 1.5rem 0; }
+.ending .doors p { margin: 0 0 .6rem; }
+.ending .doors b { font-family: var(--caps); font-weight: normal; color: var(--bulb); letter-spacing: .06em; }
+.ending .last { font-family: var(--caps); color: #c23a2c; letter-spacing: .18em; margin-top: 2.5rem; }
+.ending .listen { color: var(--ink-dim); font-style: italic; }
+
+/* ---------- phone: the file stacks ---------- */
+@media (max-width: 760px) {
+  main.file { padding: 0 12px 4rem; }
+  .timeline::before { left: 11px; }
+  .entry, .entry:nth-child(even) { grid-template-columns: 24px 1fr; column-gap: 10px; margin-bottom: 3rem; }
+  .entry .pin { grid-column: 1; grid-row: 1; margin-top: .35rem; width: 14px; height: 14px; }
+  .entry .when, .entry:nth-child(even) .when { grid-column: 2; grid-row: 1; text-align: left; padding: 0 0 .6rem; }
+  .entry:nth-child(n) .card { grid-column: 2; grid-row: 2; transform: none; }
+  .card { padding: 1.2rem 1rem 1.3rem; }
+  .card dl { grid-template-columns: 1fr; }
+  .card dt { margin-top: .3rem; }
+  figure.photo, .entry:nth-child(even) figure.photo { transform: none; }
+  .margin { font-size: 1.3rem; }
+  .coffee { display: none; }
+}
