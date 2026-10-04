@@ -376,7 +376,7 @@ export default {
     // --- top wall: neon backing boards (tubes unlit here; they burn in glow), cloth banners with slogans gone wrong
     for (const n of NEON) {
       if (m.deadT(n.x)) continue;
-      const w = n.text.length * n.px * 0.72 + 12;
+      const w = n.text.length * n.px * 0.84 + 12;
       ctx.fillStyle = "#14060c"; ctx.fillRect(n.x - w / 2, 1, w, 18); ctx.strokeStyle = "#3a1a20"; ctx.lineWidth = 1; ctx.strokeRect(n.x - w / 2 + 0.5, 1.5, w - 1, 17);
       api.lights.push({ x: n.x, y: 30, r: 110, color: n.col, flicker: 0, seed: hash(n.x, 1) });
     }
@@ -570,7 +570,7 @@ export default {
     // neon on the top wall: one tube in each sign is dying (a slow sag in brightness, never a strobe)
     if (box.y0 < 24) for (const n of NEON) {
       if (m.deadT(n.x) || n.x < box.x0 - 100 || n.x > box.x1 + 100) continue;
-      const cw = n.px * 0.72, x0 = n.x - (n.text.length - 1) * cw / 2;
+      const cw = n.px * 0.84, x0 = n.x - (n.text.length - 1) * cw / 2;
       ctx.globalCompositeOperation = "lighter";
       for (let i = 0; i < n.text.length; i++) {
         const ch = n.text[i]; if (ch === " ") continue;
