@@ -61,3 +61,10 @@ anything blocking), send it with `SendMessage` to `"main"` along with your recom
 answer. Keep working on whatever it doesn't block; the reply arrives at your next tool
 round. If you'd be blocked before a reply comes, go with your recommendation and flag it
 in your final report. Don't ask what you can verify in the repo.
+
+## Messages from the orchestrator
+
+Messages arrive between your tool calls, but they are queued work, not interrupts.
+Finish the edit or command you're in and leave your files consistent (tests runnable,
+nothing half-written) before acting on one. A message marked **URGENT** is the only
+exception: act on it at once (e.g. stop a deploy, or don't push a known-broken build).
