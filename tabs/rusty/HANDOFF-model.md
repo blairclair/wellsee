@@ -23,8 +23,30 @@ Per the coordinator, no panels were redrawn. The only panel change is p27's one-
 - p04: use `kneel3q` so he faces the box rather than the viewer.
 - p27: the trophy-scale rework (3× Rusty's height) was not attempted.
 
-## Not started: the user's "less boxy / higher quality / creepier" request
-No code exists for this yet. Nothing for it is committed or in progress. Next steps, in order:
+## In progress: the user's "less boxy / higher quality / creepier" request
+**Live (2026-10-03, "rusty model: organic figure rebuild"), step 1 only, stopped early for usage:**
+`R.person` now draws legs and sleeves with `R.tube` (tapered, heavier ink on the shadow side chosen
+from `o.light`, default shadow on local -x), knee/elbow creases, ankle folds, a curved pelvis,
+a torso with sloped shoulders (neck base ±18,-321 to caps ±54,-298), a mild paunch, a clipped
+shadow side with halftone and armpit-to-belly folds, a heavy shadow-side contour, a small oriented
+mitten hand (same footprint as the old r=11 dot), and a tube neck with cords at wear > .5. Collar,
+tie and lapels moved up to the new neckline. All anchors, signatures and `R.limb` are unchanged;
+all 27 panels render, and a contact-sheet comparison showed no regressions.
+Not done from step 1: nothing in `R.person` reads differently at panel scale for seated poses
+beyond the pelvis; check `sit` on the modelsheet (the curved pelvis reads a little like a cushion).
+
+**Next, in this order (nothing below is started):** step 2 (head structure + `grief`/`hollow`),
+step 3 (creepy helpers), step 4 (Unwilling options + organic player limbs), then the SCRIPT-v2 model
+needs (Rusty 39, Danny 6, Carol adult, the granddaughter baby/4/6/8, Danny and Jess at 37, crowd,
+Choir, kept-in-mirrors, two Unwilling poses `crouch`/`shoulder` (needs `pose.legs`/`pose.dy`/absolute
+arms support in `R.player`), props: sock rabbit, sealed whiskey, worn wooden rabbit; `o.tag` text
+on `R.person`), then `style.css` (`.panel.thin` for >=3:1, `mirror` and `night` moods: copy every
+`dusk` rule incl. the phone `.caps` background; `night` currently has no rules at all), then the
+MODEL.md "draw in the new style" guide (granddaughter is `who: "Girl"` until p51).
+Review tooling idea: render all panels with `tools/render.mjs <dir>`, put the SVGs as `<img>` in one
+HTML grid and screenshot it with headless Chrome: one image per review round.
+
+Original plan for reference:
 1. **De-box `R.person`, keeping every anchor in place** (feet, hips at -185+dy, shoulders, pose hand points, `carry`, head centre and scale). Panels compute positions from these.
    - Draw legs as `R.tube(L, 38, 28, pants, lw, {bulge:4, shade})` and arms as `R.tube([sh, el, wrist], 27, 20, ...)`. Put the heavier ink on the side away from `o.light`. On a downward limb, `tubeShape().a` is the left side.
    - Replace the rectangle pelvis with a curved hip shape.

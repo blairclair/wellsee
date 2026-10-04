@@ -473,34 +473,69 @@
     var legs = v ? pose.legs.map(function (L) { return [wpt(L[0]), L[1], L[2]]; }) : pose.legs;
     var arms = pose.arms.map(function (a) { return [R_(v ? wpt(a[0]) : a[0]), R_(a[1]), R_(a[2])]; });
     /* legs */
+    /* organic construction: shadow side sx (-1 = local -x) follows o.light like R.head */
+    var sx = o.light ? (o.light > 0 ? -1 : 1) : -1;
+    /* which tubeShape side (a = left normal of travel) faces the shadow: -1 -> a, 1 -> b */
+    function shadeOf(pts) {
+      var a = pts[0], b = pts[pts.length - 1], dx0 = b[0] - a[0], dy0 = b[1] - a[1];
+      return (-dy0 * sx + dx0 * .6) > 0 ? -1 : 1;
+    }
+    /* a soft fold on the inside of a bend (elbow, knee) */
+    function crease(A, len) {
+      var u = [A[0][0] - A[1][0], A[0][1] - A[1][1]], d = [A[2][0] - A[1][0], A[2][1] - A[1][1]];
+      var mu = Math.hypot(u[0], u[1]) || 1, md = Math.hypot(d[0], d[1]) || 1;
+      var bx = u[0] / mu + d[0] / md, by = u[1] / mu + d[1] / md, mb = Math.hypot(bx, by);
+      if (mb < .25) return "";
+      bx /= mb; by /= mb;
+      var e = A[1];
+      return P("M" + pt([e[0] + bx * 3, e[1] + by * 3]) + " Q" + pt([e[0] + bx * (len * .6) - by * 3, e[1] + by * (len * .6) + bx * 3]) + " " + pt([e[0] + bx * len, e[1] + by * len]), "none", INK, lw * .55, 'opacity=".7"');
+    }
     var legW = of.gown ? 22 : 34;
     legs.forEach(function (L) {
-      s += limb(L, legW, of.gown ? mix(skin, "#333", .2) : pants, lw);
+      if (of.gown) s += tube(L, 22, 17, mix(skin, "#333", .2), lw, { bulge: 2, shade: shadeOf(L) });
+      else {
+        s += tube(L, legW + 6, legW - 7, pants, lw, { bulge: 3, shade: shadeOf(L) });
+        s += crease(L, 16);
+        var fa = L[2];
+        s += P("M" + f(fa[0] - 12) + "," + f(fa[1] - 18) + " q6,4 12,0 M" + f(fa[0] - 4) + "," + f(fa[1] - 28) + " q7,3 13,-1", "none", INK, lw * .45, 'opacity=".55"');
+      }
       var ft = L[2];
       s += P("M" + f(ft[0] - 16) + "," + f(ft[1] + 8) + " L" + f(ft[0] - 15) + "," + f(ft[1] - 10) + " C" + f(ft[0] - 4) + "," + f(ft[1] - 17) + " " + f(ft[0] + 10) + "," + f(ft[1] - 13) + " " + f(ft[0] + 16) + "," + f(ft[1] - 6) +
         " C" + f(ft[0] + 30) + "," + f(ft[1] - 4) + " " + f(ft[0] + 32) + "," + f(ft[1] + 6) + " " + f(ft[0] + 27) + "," + f(ft[1] + 8) + "Z", of.boots, INK, lw * .8);
     });
     if (of.stains) s += '<circle cx="' + f(legs[1][1][0] + 4) + '" cy="' + f(legs[1][1][1] + 10) + '" r="9" fill="#4a1512" opacity=".7"/>';
-    if (!of.gown) s += P(warpPath("M-40," + f(-192 + dy) + " L40," + f(-192 + dy) + " L37," + f(-160 + dy) + " L-37," + f(-160 + dy) + "Z", wx, 1), pants, INK, lw * .8);
+    if (!of.gown) s += P(warpPath("M-41," + f(-192 + dy) + " L41," + f(-192 + dy) + " C44," + f(-178 + dy) + " 43," + f(-166 + dy) + " 35," + f(-157 + dy) +
+      " C20," + f(-150 + dy) + " -20," + f(-150 + dy) + " -35," + f(-157 + dy) + " C-43," + f(-166 + dy) + " -44," + f(-178 + dy) + " -41," + f(-192 + dy) + "Z", wx, 1), pants, INK, lw * .8);
     function armSvgFar(A) { return armSvg(A); }
     /* torso group (rotated by stoop around hip) */
     var tg = "";
     var torso = of.gown ?
       "M-46,-305 C-62,-240 -70,-150 -72,-60 L72,-60 C70,-150 62,-240 46,-305 C24,-316 -24,-316 -46,-305Z" :
-      "M-46,-305 C-56,-268 -50,-220 -40,-182 L40,-182 C" + (of.belly ? "78,-200 74,-262 46,-305" : "54,-222 58,-268 46,-305") + " C24,-316 -24,-316 -46,-305Z";
-    tg += P(torso, shirt, INK, lw);
-    tg += R.tone(k, "M-46,-305 C-56,-268 -50,-220 -40,-182 L-14,-182 C-24,-230 -26,-270 -20,-312Z", .3);
+      /* sloped shoulders from the neck base (±18,-321) down to the caps (±54,-298), mild paunch */
+      "M-18,-321 C-32,-317 -47,-311 -54,-298 C-60,-272 -57,-240 -51,-216 C-48,-200 -45,-190 -40,-182 L40,-182 C" +
+      (of.belly ? "78,-200 76,-262 54,-298" : "45,-190 48,-200 51,-216 C57,-240 60,-272 54,-298") + " C47,-311 32,-317 18,-321 C8,-324 -8,-324 -18,-321Z";
+    var tcid = k.uid("torso");
+    tg += '<defs><clipPath id="' + tcid + '"><path d="' + torso + '"/></clipPath></defs>';
+    tg += P(torso, shirt, null, 0);
+    /* shadow side: darker fill + halftone, then folds from the armpits toward the belly */
+    var shd = "M-18,-324 C-32,-319 -48,-312 -58,-298 C-64,-270 -60,-238 -54,-214 C-50,-198 -46,-188 -42,-180 L-14,-180 C-24,-220 -30,-268 -22,-322Z";
+    if (sx > 0) shd = warpPath(shd, function (x) { return -x; }, -1);
+    var tsh = P(shd, mix(shirt, "#2a2018", .35), null, 0, 'opacity=".55"') + R.tone(k, shd, .3) +
+      P("M-44,-282 C-36,-260 -30,-240 -22,-224 M44,-282 C36,-262 30,-244 24,-230 M-30,-204 C-12,-196 12,-196 30,-204", "none", INK, lw * .5, 'opacity=".45"');
+    tg += '<g clip-path="url(#' + tcid + ')">' + tsh + "</g>";
+    tg += P(torso, "none", INK, lw);
+    tg += P(sx < 0 ? "M-18,-321 C-32,-317 -47,-311 -54,-298 C-60,-272 -57,-240 -51,-216 C-48,-200 -45,-190 -40,-182" : "M18,-321 C32,-317 47,-311 54,-298 C60,-272 57,-240 51,-216 C48,-200 45,-190 40,-182", "none", INK, lw * 1.8);
     if (of.flannel) {
       for (var i = -40; i <= 40; i += 16) tg += P("M" + i + ",-310 L" + (i + 2) + ",-184", "none", mix(shirt, "#1a2a3a", .5), 4, 'opacity=".55"');
       for (var j = -296; j < -186; j += 18) tg += P("M-50," + j + " L52," + j, "none", mix(shirt, "#9a3030", .6), 3, 'opacity=".5"');
     }
     if (of.jacket || of.carnival) {
-      tg += P("M-15,-312 L0,-262 L15,-312Z", of.under, INK, lw * .6);
-      tg += P("M-4,-308 L4,-308 L7,-268 L0,-256 L-7,-268Z", of.tie, INK, lw * .6);
-      if (of.jacket) tg += P("M-17,-312 L-4,-262 L-12,-226 M17,-312 L4,-262 L12,-226", "none", INK, lw * .7) +
+      tg += P("M-16,-320 L0,-262 L16,-320Z", of.under, INK, lw * .6);
+      tg += P("M-4,-316 L4,-316 L7,-268 L0,-256 L-7,-268Z", of.tie, INK, lw * .6);
+      if (of.jacket) tg += P("M-18,-320 L-4,-262 L-12,-226 M18,-320 L4,-262 L12,-226", "none", INK, lw * .7) +
         '<circle cx="3" cy="-228" r="3" fill="' + INK + '"/><circle cx="3" cy="-206" r="3" fill="' + INK + '"/>';
     } else if (!of.gown) {
-      tg += P("M-17,-313 L0,-292 L-4,-284 L-20,-303Z M17,-313 L0,-292 L4,-284 L20,-303Z", mix(shirt, "#fff", .1), INK, lw * .6);
+      tg += P("M-18,-321 L0,-298 L-5,-288 L-24,-308Z M18,-321 L0,-298 L5,-288 L24,-308Z", mix(shirt, "#fff", .1), INK, lw * .6);
       tg += [-276, -252, -228, -204].map(function (y) { return '<circle cx="2" cy="' + y + '" r="2.4" fill="' + INK + '"/>'; }).join("");
     }
     if (of.gown) tg += P("M-20,-312 L0,-282 L20,-312", "none", "#d9b23a", 6);
@@ -552,8 +587,16 @@
     var sleeve = shirt;
     function armSvg(A) {
       var el = A[1], hd = A[2], wr = [hd[0] + (el[0] - hd[0]) * .15, hd[1] + (el[1] - hd[1]) * .15];
-      return limb([A[0], el, wr], 24, shirt, lw) +
-        '<circle cx="' + f(hd[0]) + '" cy="' + f(hd[1]) + '" r="11" fill="' + skin + '" stroke="' + INK + '" stroke-width="' + f(lw * .8) + '"/>';
+      /* tapered sleeve (heavier ink on the shadow side), elbow fold, cuff, then a small
+         oriented mitten hand centred on the hand point (same footprint as the old r=11 dot) */
+      var arm = [A[0], el, wr];
+      var out = tube(arm, 29, 20, shirt, lw, { bulge: 2, shade: shadeOf(arm) }) + crease(arm, 12);
+      var ang = Math.atan2(hd[1] - el[1], hd[0] - el[0]) * 180 / Math.PI, ts = A === arms[0] ? 1 : -1;
+      var hand = P(smooth([[-9, -9], [2, -11], [12, -8], [16, -1], [13, 7], [3, 10], [-8, 9], [-11, 0]], true), skin, INK, lw * .75) +
+        P(smooth([[-2, -8 * ts], [6, -15 * ts], [12, -13 * ts], [9, -7 * ts]]), skin, INK, lw * .6) +
+        P("M8,-3 L15,-2 M8,3 L14,4", "none", INK, lw * .4, 'opacity=".7"');
+      out += '<g transform="translate(' + f(hd[0]) + "," + f(hd[1]) + ") rotate(" + f(ang) + ')">' + hand + "</g>";
+      return out;
     }
     if (!v) s += armSvg(arms[0]);
     s += ps;
@@ -563,7 +606,8 @@
     /* neck + head */
     var R0 = function (p) { var q = rot(p, stoop, [0, -185]); return [q[0], q[1] + dy]; };
     var nb = R0([wx(0), -300]), nt = R0([wx(0), -328]);
-    var neck = limb([nb, nt], 26, skin, lw);
+    var neck = tube([nb, nt], 28, 24, skin, lw, { shade: sx });
+    if (w > .5) neck += P("M" + pt([nb[0] - 6, nb[1] - 2]) + " L" + pt([nt[0] - 4, nt[1] + 4]) + " M" + pt([nb[0] + 6, nb[1] - 2]) + " L" + pt([nt[0] + 4, nt[1] + 4]), "none", INK, lw * .45, 'opacity="' + f((w - .5) * 1.4) + '"');
     var hc = R0([wx(0) + 2, -362]);
     var head = R.head(k, { x: hc[0], y: hc[1], s: .52, rot: stoop + (o.headTilt || 0), ch: ch, expr: o.expr, turn: o.turn == null ? .25 + .45 * v : o.turn, wear: w, light: o.light, lw: 5.5, hat: o.hat, look: o.look, glint: o.glint });
     return "<g " + T(o) + ">" + neck + s + head + "</g>";
