@@ -60,6 +60,16 @@ instead of the cushion-like standing pelvis. p12 and p27 checked; all 27 panels 
   only): choir, kept, sock rabbit, whiskey, baby, carved rabbit, and the helper demos. Shoot the
   modelsheet once before the fleet relies on them.
 
+**Live (2026-10-04, "rusty model: panel shapes, night/mirror moods, style guide"), last steps:**
+`comic.js` adds `.thin` (w/h >= 3) and `.splash` (w >= 1200, h >= 700) to panels; `style.css` gives
+`.thin` smaller captions, and adds `night` and `mirror` moods (page and single-panel) mirroring every
+`dusk` rule incl. the phone `.caps` background. No current panel is thin; p01/p21 get `.splash`
+(no rules attached, no visual change). MODEL.md has the v2 cast/props, helpers, Unwilling options and
+the "How to draw in the new style" guide (incl. `who: "Girl"` until p51).
+**Remaining:** eyeball the unreviewed helpers/props on the modelsheet and add modelsheet rows for
+them; first real use of `.thin`/`night`/`mirror` should be checked at 1280 and 375. Kids use adult
+body proportions scaled down with a big head (`headS`); a real child body is not done.
+
 **Next, in this order (steps 2-4 and the cast/props above are now done; style.css and the guide remain):** step 2 (head structure + `grief`/`hollow`),
 step 3 (creepy helpers), step 4 (Unwilling options + organic player limbs), then the SCRIPT-v2 model
 needs (Rusty 39, Danny 6, Carol adult, the granddaughter baby/4/6/8, Danny and Jess at 37, crowd,
