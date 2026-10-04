@@ -270,11 +270,15 @@ function paint(ctx, game, api) {
   }
   // --- the portrait studio: photographs on the outer walls of the side rooms
   Lt.eyes = Lt.eyes.filter((e) => e.kind !== "pic"); // paint reruns on zoom changes
+  const lampX = (runs) => runs.filter(([a, b]) => b - a >= 3).map(([a, b]) => (a + b + 1) / 2 * TILE);
+  const topLamps = lampX(Lt.top), lowLamps = lampX(Lt.lowerTop); // the darkroom safelights (below) take these slots
   for (const [a, b] of Lt.top) for (let x = a * TILE + 18; x < (b + 1) * TILE - 12; x += 38) {
+    if (topLamps.some((q) => Math.abs(q - x) < 28)) continue;
     const k = hash(x, 0, 21); portrait(ctx, x, 16, 22, 26, k, (k - 0.5) * 0.12);
     if (k > 0.55) Lt.eyes.push({ kind: "pic", x: x, y: 14, v: 0 });
   }
   for (const [a, b] of Lt.lowerTop) for (let x = a * TILE + 14; x < (b + 1) * TILE - 10; x += 30) {
+    if (lowLamps.some((q) => Math.abs(q - x) < 24)) continue;
     const k = hash(x, SW, 22); portrait(ctx, x, SW * TILE + TILE - 7, 14, 12, k, (k - 0.5) * 0.25);
   }
   for (const [a, b] of Lt.bottom) for (let x = a * TILE + 20; x < (b + 1) * TILE - 12; x += 44) {
@@ -282,6 +286,26 @@ function paint(ctx, game, api) {
   }
   // --- face-in-the-hole boards along the partitions
   for (const e of Lt.eyes) if (e.kind === "cut") cutout(ctx, e.x, e.y, e.v);
+  // --- the side rooms are Arthur's darkrooms: a sign and a red safelight per room, in a gap among the photographs.
+  //     A small pool only (constraint: the rooms must stay dark for gameplay; this lights the wall decor, not the floor)
+  Lt.safe = [];
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  for (const [lamps, row] of [[topLamps, 0], [lowLamps, SW]]) for (const cx of lamps) {
+    const wy = row * TILE + TILE - 4;
+    if (row === 0) { // a full sign on the outer wall
+      ctx.fillStyle = "#1a0a10"; ctx.fillRect(cx - 18, wy - 23, 36, 13);
+      ctx.fillStyle = "#e8102c"; ctx.fillRect(cx - 17, wy - 22, 34, 11);
+      ctx.font = '900 5px "Arial Black", Impact, sans-serif'; ctx.fillStyle = "#fff4e0"; ctx.fillText("DARKROOM", cx, wy - 18.6);
+      ctx.font = '900 3px "Arial Black", Impact, sans-serif'; ctx.fillStyle = "#ffe04a"; ctx.fillText("KEEP SMILING", cx, wy - 13.6);
+    } else { // the counter's back face is only 13px tall: a slim plate
+      ctx.fillStyle = "#e8102c"; ctx.fillRect(cx - 15, wy - 12, 30, 6);
+      ctx.font = '900 4px "Arial Black", Impact, sans-serif'; ctx.fillStyle = "#fff4e0"; ctx.fillText("DARKROOM", cx, wy - 8.8);
+    }
+    ctx.fillStyle = "#14080a"; ctx.beginPath(); ctx.moveTo(cx - 6, wy - 1); ctx.lineTo(cx - 3, wy - 7); ctx.lineTo(cx + 3, wy - 7); ctx.lineTo(cx + 6, wy - 1); ctx.fill();
+    ctx.fillStyle = "#5a0a0e"; ctx.fillRect(cx - 4, wy - 1.5, 8, 2);
+    api.lights.push({ x: cx, y: wy + 22, r: 92, color: "#9a0a12", flicker: 0.03, seed: hash(cx, row, 77) });
+    Lt.safe.push({ x: cx, y: wy, seed: hash(cx, row, 78) });
+  }
   // --- floor: a little confetti and spent photographs, along the walls only
   for (let ty = 1; ty < game.h - 1; ty++) for (let tx = 1; tx < game.w - 1; tx++) {
     if (solid(game, tx, ty) || nameAt(game, tx, ty) !== "dirt") continue;
@@ -418,6 +442,13 @@ function glow(ctx, game, t, view, box) {
     const k = 1 - q.age / 0.45, r = 20 + 30 * (1 - k);
     ctx.globalAlpha = 0.7 * k; ctx.drawImage(glowSprite("#e8f4ff"), q.x - r, q.y - r, r * 2, r * 2);
     ctx.globalAlpha = k; circle(ctx, q.x, q.y, 1.8, "#ffffff");
+  }
+  // --- the darkroom safelights: a slow red breathing, never a flash
+  for (const s of Lt.safe || []) {
+    if (s.x < box.x0 - 40 || s.x > box.x1 + 40 || s.y < box.y0 - 40 || s.y > box.y1 + 40) continue;
+    const k = red ? 0.8 : 0.7 + 0.3 * Math.sin(t * 0.9 + s.seed * 20);
+    ctx.globalAlpha = 0.5 * k; ctx.drawImage(glowSprite("#ff1a2a"), s.x - 22, s.y - 18, 44, 44);
+    ctx.globalAlpha = 0.9 * k; ctx.fillStyle = "#ff3a3a"; ctx.fillRect(s.x - 4, s.y - 1.5, 8, 2);
   }
   // --- eyes in the cutout holes and some of the photographs: they follow you
   for (const e of Lt.eyes) {
