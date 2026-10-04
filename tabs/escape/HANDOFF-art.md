@@ -32,10 +32,10 @@ Owner: the art agent. Files: `js/art.js` plus `js/art/{util,tiles,figures,props,
   - Before: art.render took about 28-36 ms/frame (rAF about 28-38 fps) on desktop 1280x760 at DPR 2.
   - After: about 24-31 ms software; play-test fps went from 28 to 41.
   - With the GPU flags (`prof.cjs ... gpu`), render takes about 1-7 ms.
-- Profiling switches: `window.__artProf = {noLight, noLevel, noEnt}`. Frame readout: add `?fps` to the URL, or set `localStorage['escape.fps']='1'`.
+- The `window.__artProf` ablation switches were removed (cleanup deploy). Frame readout: add `?fps` to the URL, or set `localStorage['escape.fps']='1'`.
 
 ## Next steps
-1. Remove the pre-fix event compatibility shim in `onEvent` (the `if (ENEMIES[type])` line). The content fix is live, so `hit`/`spawn` now carry `enemy`.
+1. Done: the pre-fix event shim in `onEvent` is gone; `hit`/`spawn` carry `enemy`.
 2. Phone readability: ask content/engine to raise the camera zoom floor on narrow screens (`updateCamera` `Math.max(0.85, …)`, to about 1.15 when W < 500). Already requested via main.
 3. Remaining art:
    - Grotesque pass on the teacup, horse and cookie at gameplay zoom.

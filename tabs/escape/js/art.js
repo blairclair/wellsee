@@ -79,9 +79,7 @@ function decal(x, y, kind, life = 8, extra = {}) { fx.decals.push({ x, y, kind, 
 function tempLight(x, y, r, color, life, strength = 1) { fx.lights.push({ x, y, r, color, life, age: 0, strength }); }
 
 export function onEvent(ev, view) {
-  let type = ev.type;
-  // compatibility with the pre-fix engine, where data.type clobbered the event type
-  if (ENEMIES[type]) type = ev.force != null ? "hit" : "spawn";
+  const type = ev.type;
   const x = ev.x ?? 0, y = ev.y ?? 0;
   switch (type) {
     case "hit": {
@@ -491,8 +489,7 @@ export function render(ctx, game, cam, view) {
   const vw = W / z, vh = H / z, mw = game.w * TILE, mh = game.h * TILE;
   const bx0 = clamp(camX - 2, 0, mw), by0 = clamp(camY - 2, 0, mh), bx1 = clamp(camX + vw + 2, 0, mw), by1 = clamp(camY + vh + 2, 0, mh);
   ctx.imageSmoothingEnabled = true;
-  const PF = window.__artProf || {};
-  if (bx1 > bx0 && by1 > by0 && !PF.noLevel) ctx.drawImage(pre.canvas, bx0 * pre.scale, by0 * pre.scale, (bx1 - bx0) * pre.scale, (by1 - by0) * pre.scale, bx0, by0, bx1 - bx0, by1 - by0);
+  if (bx1 > bx0 && by1 > by0) ctx.drawImage(pre.canvas, bx0 * pre.scale, by0 * pre.scale, (bx1 - bx0) * pre.scale, (by1 - by0) * pre.scale, bx0, by0, bx1 - bx0, by1 - by0);
 
   const vx0 = camX - TILE, vy0 = camY - TILE, vx1 = camX + vw + TILE, vy1 = camY + vh + TILE;
   for (const [tx, ty, name] of pre.fxTiles) {
@@ -526,7 +523,7 @@ export function render(ctx, game, cam, view) {
   tall.push(p);
   tall.sort((a, b) => a.y - b.y);
   glints.length = 0;
-  for (const e of PF.noEnt ? [] : flat.concat(tall)) {
+  for (const e of flat.concat(tall)) {
     if (e.x < vx0 - 60 || e.x > vx1 + 60 || e.y < vy0 - 40 || e.y > vy1 + 140) continue;
     if (e === p && marked) drawMarkedTrail(ctx, game, t);
     const fn = ENTITY_ART[e.type] || (e.cat === "pickup" ? ENTITY_ART.pickup : null);
@@ -548,7 +545,7 @@ export function render(ctx, game, cam, view) {
   }
   drawParts(ctx, t);
 
-  if (!PF.noLight) drawLighting(ctx, game, vcam, z, pre, t, W, H, view);
+  drawLighting(ctx, game, vcam, z, pre, t, W, H, view);
 
   // ---- screen-space post ----
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
