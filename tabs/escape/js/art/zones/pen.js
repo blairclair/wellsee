@@ -115,29 +115,29 @@ function grinFace(g, cx, cy, r, k, skin = "#fff0e0") {
     g.beginPath(); g.moveTo(x - r * 0.07, yb + 0.3); g.lineTo(x + r * 0.07, yb + 0.3); g.lineTo(x, yb - r * 0.16); g.fill();
   }
 }
-function drips(g, x0, x1, y, col, seed, n = 6) {
+function drips(g, x0, x1, y, col, seed, n = 6, len = 7) {
   g.fillStyle = col;
   for (let i = 0; i < n; i++) {
-    const x = x0 + hash(seed, i, 1) * (x1 - x0), l = 2 + hash(seed, i, 2) * 7, w = 0.7 + hash(seed, i, 3) * 0.8;
+    const x = x0 + hash(seed, i, 1) * (x1 - x0), l = 2 + hash(seed, i, 2) * len, w = 0.7 + hash(seed, i, 3) * 0.8;
     g.fillRect(x - w / 2, y, w, l); circle(g, x, y + l, w * 0.9, col);
   }
 }
 function billboard(g, cx, base, text, seed, k) {
-  const w = 64, h = 30, top = base - 14 - h;
+  const w = 78, h = 30, top = base - 14 - h, fx = cx - 25; // face on the left, slogan on the right
   g.fillStyle = "#1a1014"; g.fillRect(cx - w / 2 + 6, top + h, 2.4, base - top - h); g.fillRect(cx + w / 2 - 8, top + h, 2.4, base - top - h);
   g.fillStyle = dim(["#ffd23a", "#4ad8ff", "#9dff6a"][seed % 3], k * 0.85); g.fillRect(cx - w / 2, top, w, h);
   for (let i = 0; i < 9; i++) { // sunburst
     const a0 = (i / 9) * TAU, a1 = a0 + TAU / 18;
-    g.fillStyle = dim("#ffffff", k * 0.25); g.beginPath(); g.moveTo(cx - 18, top + h / 2);
-    g.lineTo(cx - 18 + Math.cos(a0) * 60, top + h / 2 + Math.sin(a0) * 60); g.lineTo(cx - 18 + Math.cos(a1) * 60, top + h / 2 + Math.sin(a1) * 60); g.fill();
+    g.fillStyle = dim("#ffffff", k * 0.25); g.beginPath(); g.moveTo(fx, top + h / 2);
+    g.lineTo(fx + Math.cos(a0) * 70, top + h / 2 + Math.sin(a0) * 70); g.lineTo(fx + Math.cos(a1) * 70, top + h / 2 + Math.sin(a1) * 70); g.fill();
   }
   g.save(); g.beginPath(); g.rect(cx - w / 2, top - 20, w, h + 20); g.clip();
-  grinFace(g, cx - 18, top + h / 2 + 2, 9.5, k);
+  grinFace(g, fx, top + h / 2 + 2, 9.5, k);
   g.restore();
   g.strokeStyle = dim("#ff3d8b", k); g.lineWidth = 1.6; g.strokeRect(cx - w / 2, top, w, h);
   g.fillStyle = dim("#ff1f5a", k); g.font = `11px ${FONT}`; g.textAlign = "center"; g.textBaseline = "middle";
-  g.fillText(text[0], cx + 13, top + 10, 36); g.fillStyle = dim("#2a0a40", k); g.font = `8px ${FONT}`; g.fillText(text[1], cx + 13, top + 21, 36);
-  drips(g, cx, cx + 28, top + 15, dim("#c0122c", k), seed * 7 + 1, 4);
+  g.fillText(text[0], cx + 13, top + 10, 46); g.fillStyle = dim("#2a0a40", k); g.font = `8px ${FONT}`; g.fillText(text[1], cx + 13, top + 22, 46);
+  drips(g, cx - 8, cx + 34, top + 15.5, dim("#c0122c", k), seed * 7 + 1, 3, 2.5); // the headline's paint runs, between the lines
   drips(g, cx - w / 2, cx + w / 2, top + h, dim("#8b1414", k), seed * 7 + 2, 5);
 }
 
