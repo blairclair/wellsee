@@ -363,8 +363,20 @@ function drawSkySign(ctx, s, t, red, em) {
   ctx.strokeStyle = C.gold; ctx.lineWidth = 1.5; ctx.strokeRect(x0 + 1, y0 + 1, s.w - 2, h - 2);
   ctx.fillStyle = "rgba(170,10,30,.85)";
   for (let i = 0; i < 6; i++) { const dx = x0 + 6 + hash(s.seed, i, 8) * (s.w - 12), l = 4 + hash(s.seed, i, 9) * 14; ctx.fillRect(dx, y0 + h - 2, 1.4, l); circle(ctx, dx + 0.7, y0 + h - 2 + l, 1.3, "rgba(170,10,30,.85)"); }
+  if (em) skySignEm(s, t, red, em);
+}
+function skySignEm(s, t, red, em) {
+  const x0 = s.x - s.w / 2, y0 = -56, h = 24;
   em.push(["neon", neon(s.text, s.col, 13), s.x, y0 + h / 2, red ? 0.85 : 0.75 + 0.2 * Math.sin(t * 0.9 + s.seed)]);
   for (let x = x0 + 4; x < x0 + s.w - 2; x += 9) { const dead = hash(s.seed, x, 4) < 0.2; em.push(["bulb", x, y0 - 2, "#ffd56a", dead ? 0.15 : 1]); }
+}
+function drawSteam(ctx, c, t) {
+  for (let i = 0; i < 11; i++) {
+    if ((i * 7 + Math.floor(t * 2)) % 5 !== 0) continue;
+    const px = c.x - 50 + i * 10, hgt = 22 + 26 * Math.sin((i / 10) * Math.PI);
+    for (let k = 0; k < 3; k++) { const u = ((t * 0.6 + k / 3 + i * 0.13) % 1); ctx.globalAlpha = 0.25 * (1 - u); circle(ctx, px + Math.sin(u * 6 + i) * 3, -44 - hgt - u * 30, 3 + u * 6, "#e8e0f0"); }
+  }
+  ctx.globalAlpha = 1;
 }
 function drawClownCutout(ctx, c, em) {
   const x = c.x, y = -36;
@@ -425,14 +437,22 @@ function drawBalloons(ctx, x0, x1, ylo, yhi, t, red, salt, mw) {
     if (i % 4 === 0) { circle(ctx, bx - 2, by - 1, 0.9, "#0a0306"); circle(ctx, bx + 2, by - 1, 0.9, "#0a0306"); ctx.strokeStyle = "#0a0306"; ctx.lineWidth = 0.7; ctx.beginPath(); ctx.arc(bx, by + 1, 3, 0.2, Math.PI - 0.2); ctx.stroke(); } // a face drawn on in marker
   }
 }
-function drawLake(ctx, s, t, red, x0, x1, em) {
-  const mh = s.mh;
-  // the boardwalk
+function drawBoardwalk(ctx, x0, x1, mh, t, red) {
   ctx.fillStyle = "#2e1c12"; ctx.fillRect(x0, mh, x1 - x0, 24);
   ctx.strokeStyle = "#140a06"; ctx.lineWidth = 1; ctx.beginPath();
   for (let x = Math.floor(x0 / 12) * 12; x < x1; x += 12) { ctx.moveTo(x, mh); ctx.lineTo(x, mh + 24); }
   ctx.stroke();
   ctx.fillStyle = "rgba(0,0,0,.5)"; ctx.fillRect(x0, mh, x1 - x0, 5);
+  // railing: posts with gold caps, bunting between
+  ctx.fillStyle = "#3a2418";
+  for (let x = Math.floor(x0 / 48) * 48; x < x1 + 48; x += 48) { ctx.fillRect(x - 2, mh + 14, 4, 14); circle(ctx, x, mh + 14, 2.6, C.gold); }
+  ctx.fillStyle = "#4a2e1e"; ctx.fillRect(x0, mh + 19, x1 - x0, 2);
+  drawSkyBunting(ctx, x0, x1, mh + 20, 3, t, red, 2);
+}
+function drawLake(ctx, s, t, red, x0, x1, em, cached) {
+  const mh = s.mh;
+  if (cached) blitStrip(ctx, s.walk, mh, LAKE_H, x0, x1, mh, mh + LAKE_H);
+  else drawBoardwalk(ctx, x0, x1, mh, t, red);
   // reflections of everything that is lit, broken up by the water
   for (let k = Math.floor((x0 - 40) / 70); k * 70 < x1 + 40; k++) {
     const rx = k * 70 + hash(k, 41) * 30, col = BULBS[((k % 5) + 5) % 5];
@@ -442,11 +462,6 @@ function drawLake(ctx, s, t, red, x0, x1, em) {
     }
   }
   ctx.globalAlpha = 1;
-  // railing: posts with gold caps, bunting between
-  ctx.fillStyle = "#3a2418";
-  for (let x = Math.floor(x0 / 48) * 48; x < x1 + 48; x += 48) { ctx.fillRect(x - 2, mh + 14, 4, 14); circle(ctx, x, mh + 14, 2.6, C.gold); }
-  ctx.fillStyle = "#4a2e1e"; ctx.fillRect(x0, mh + 19, x1 - x0, 2);
-  drawSkyBunting(ctx, x0, x1, mh + 20, 3, t, red, 2);
   for (const o of s.lake) {
     if (o.x < x0 - 120 || o.x > x1 + 120) continue;
     const bob = red ? 0 : Math.sin(t * 1.1 + o.seed * 2) * 1.5, y = mh + 62 + hash(o.seed, 5) * 60 + bob;
@@ -490,6 +505,38 @@ function glowSpr(color) {
   glowCache.set(color, c); return c;
 }
 
+/* Phones (≤2 device px per world px): the skyline's static pieces (signs, cut-outs,
+   calliope, mascots, both bunting lines) and the boardwalk are baked once into 2x
+   strips, so per frame only the turning carousels, the wheel, balloons, steam and the
+   lights are drawn. At desktop zoom (~4.8 px/world px) a sharp cache would cost ~50MB,
+   and the live vector path is cheap there, so desktop keeps drawing it live. */
+const CK = 2, MID_Y = -140, FRONT_Y = -16, LAKE_H = 36;
+function strip(w, y0, y1, draw) {
+  const c = document.createElement("canvas"); c.width = Math.ceil(w * CK); c.height = Math.ceil((y1 - y0) * CK);
+  const g = c.getContext("2d"); g.scale(CK, CK); g.translate(SIDE, -y0); draw(g); return c;
+}
+function caches(s) {
+  if (s.mid) return s;
+  const W = s.mw + SIDE * 2, x0 = -SIDE, x1 = s.mw + SIDE;
+  s.midEyes = [];
+  s.mid = strip(W, MID_Y, 0, (g) => {
+    drawSkyBunting(g, x0, x1, -92, 10, 0, true, 0);
+    for (const it of s.sky) {
+      if (it.type === "sign") drawSkySign(g, it, 0, true, null);
+      else if (it.type === "clown") { const em = []; drawClownCutout(g, it, em); s.midEyes.push(...em[0][1]); }
+      else if (it.type === "calliope") { const em = []; drawCalliope(g, it, 0, true, em); s.midEyes.push(...em[0][1]); }
+      else if (it.type === "mascot") drawMascot(g, it, 0, true, null);
+    }
+  });
+  s.front = strip(W, FRONT_Y, 0, (g) => drawSkyBunting(g, x0, x1, -10, 4, 0, true, 3));
+  s.walk = strip(W, 0, LAKE_H, (g) => drawBoardwalk(g, x0, x1, 0, 0, true));
+  return s;
+}
+function blitStrip(ctx, c, y0, h, x0, x1, ya, yb) { // world rows [ya, yb) of a strip that starts at y0
+  const a = Math.max(ya, y0), b = Math.min(yb, y0 + h); if (b <= a) return;
+  ctx.drawImage(c, (x0 + SIDE) * CK, (a - y0) * CK, (x1 - x0) * CK, (b - a) * CK, x0, a, x1 - x0, b - a);
+}
+
 /* everything past the map edge, clipped so it never draws over the map */
 function drawBeyond(ctx, game, t, view, box) {
   const s = scene(game), { mw, mh } = s, red = reducedOf(view), tt = red ? 0 : t;
@@ -497,6 +544,8 @@ function drawBeyond(ctx, game, t, view, box) {
   ctx.save();
   ctx.beginPath(); ctx.rect(box.x0, box.y0, box.x1 - box.x0, box.y1 - box.y0); ctx.rect(0, 0, mw, mh); ctx.clip("evenodd");
   const x0 = Math.max(box.x0, -SIDE), x1 = Math.min(box.x1, mw + SIDE), em = [];
+  const cached = ctx.getTransform().a <= CK + 0.05; // phone scale: blit the baked strips
+  if (cached) caches(s);
   // sides: striped canvas walls of the next tents over
   for (const [sx0, sx1] of [[box.x0, 0], [mw, box.x1]]) {
     if (sx1 <= sx0) continue;
@@ -508,17 +557,30 @@ function drawBeyond(ctx, game, t, view, box) {
     ctx.drawImage(s.far, x0 + SIDE, ya + TOPH, x1 - x0, -ya, x0, ya, x1 - x0, -ya);
     if (box.y0 < -TOPH) { ctx.fillStyle = "#07030c"; ctx.fillRect(x0, box.y0, x1 - x0, -TOPH - box.y0); }
     for (const w of s.wheels) if (w.x + w.r > x0 && w.x - w.r < x1) drawWheel(ctx, w, tt, em);
-    drawSkyBunting(ctx, x0, x1, -92, 10, tt, red, 0);
-    drawBalloons(ctx, x0, x1, -190, -70, tt, red, 1, mw);
-    for (const it of s.sky) {
-      if (it.x + it.w / 2 + 20 < x0 || it.x - it.w / 2 - 20 > x1) continue;
-      if (it.type === "carousel") drawCarousel(ctx, it, tt, red, em);
-      else if (it.type === "sign") drawSkySign(ctx, it, tt, red, em);
-      else if (it.type === "clown") drawClownCutout(ctx, it, em);
-      else if (it.type === "calliope") drawCalliope(ctx, it, tt, red, em);
-      else drawMascot(ctx, it, tt, red, em);
+    if (cached) {
+      drawBalloons(ctx, x0, x1, -190, -70, tt, red, 1, mw);
+      blitStrip(ctx, s.mid, MID_Y, -MID_Y, x0, x1, ya, 0);
+      for (const it of s.sky) {
+        if (it.x + it.w / 2 + 20 < x0 || it.x - it.w / 2 - 20 > x1) continue;
+        if (it.type === "carousel") drawCarousel(ctx, it, tt, red, em);
+        else if (it.type === "sign") skySignEm(it, tt, red, em);
+        else if (it.type === "calliope" && !red) drawSteam(ctx, it, tt);
+      }
+      const eyes = s.midEyes.filter((e) => e[0] > x0 - 30 && e[0] < x1 + 30); if (eyes.length) em.push(["eyes", eyes]);
+      blitStrip(ctx, s.front, FRONT_Y, -FRONT_Y, x0, x1, ya, 0);
+    } else {
+      drawSkyBunting(ctx, x0, x1, -92, 10, tt, red, 0);
+      drawBalloons(ctx, x0, x1, -190, -70, tt, red, 1, mw);
+      for (const it of s.sky) {
+        if (it.x + it.w / 2 + 20 < x0 || it.x - it.w / 2 - 20 > x1) continue;
+        if (it.type === "carousel") drawCarousel(ctx, it, tt, red, em);
+        else if (it.type === "sign") drawSkySign(ctx, it, tt, red, em);
+        else if (it.type === "clown") drawClownCutout(ctx, it, em);
+        else if (it.type === "calliope") drawCalliope(ctx, it, tt, red, em);
+        else drawMascot(ctx, it, tt, red, em);
+      }
+      drawSkyBunting(ctx, x0, x1, -10, 4, tt, red, 3);
     }
-    drawSkyBunting(ctx, x0, x1, -10, 4, tt, red, 3);
     // night falls on all of it, heavier the further it is from the wall
     const dg = ctx.createLinearGradient(0, 0, 0, -TOPH); dg.addColorStop(0, "rgba(8,2,12,.32)"); dg.addColorStop(0.5, "rgba(8,2,12,.5)"); dg.addColorStop(1, "rgba(8,2,12,.8)");
     ctx.fillStyle = dg; ctx.fillRect(x0, ya, x1 - x0, -ya);
@@ -527,7 +589,7 @@ function drawBeyond(ctx, game, t, view, box) {
     const yb = Math.min(box.y1, mh + BOTH);
     ctx.drawImage(s.lk, x0 + SIDE, 0, x1 - x0, yb - mh, x0, mh, x1 - x0, yb - mh);
     if (box.y1 > mh + BOTH) { ctx.fillStyle = "#030609"; ctx.fillRect(x0, mh + BOTH, x1 - x0, box.y1 - mh - BOTH); }
-    drawLake(ctx, s, tt, red, x0, x1, em);
+    drawLake(ctx, s, tt, red, x0, x1, em, cached);
     const dg = ctx.createLinearGradient(0, mh, 0, mh + BOTH); dg.addColorStop(0, "rgba(4,4,10,.3)"); dg.addColorStop(1, "rgba(4,4,10,.75)");
     ctx.fillStyle = dg; ctx.fillRect(x0, mh, x1 - x0, yb - mh);
   }
