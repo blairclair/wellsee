@@ -147,6 +147,23 @@ function bleacher(ctx, g, tx, ty) {
 /* ---------------------------------------------------------------- paint (static, once) */
 function paint(ctx, g, api) {
   const L = layout(g), { mw, mh } = L;
+  // the striped canvas overhead: red and cream panels radiate from the king pole, and the
+  // light leaking through them lays the stripes across the sawdust (floor tiles only)
+  {
+    const cx = L.ring ? L.ring.x : mw / 2, cy = L.ring ? L.ring.y : mh / 2, R = Math.hypot(mw, mh), n = 36;
+    ctx.save(); ctx.beginPath();
+    for (let ty = 0; ty < g.h; ty++) for (let tx = 0; tx < g.w; tx++) if (!isSolid(g, tx, ty)) ctx.rect(tx * TILE, ty * TILE, TILE, TILE);
+    ctx.clip();
+    for (let i = 0; i < n; i++) {
+      const a0 = (i / n) * TAU, a1 = ((i + 1) / n) * TAU;
+      ctx.fillStyle = i % 2 ? "rgba(255,226,180,.07)" : "rgba(220,20,50,.11)";
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(a0) * R, cy + Math.sin(a0) * R); ctx.lineTo(cx + Math.cos(a1) * R, cy + Math.sin(a1) * R); ctx.fill();
+    }
+    // seams and guy-rope shadows cutting across
+    ctx.strokeStyle = "rgba(0,0,0,.18)"; ctx.lineWidth = 1.2;
+    for (let i = 0; i < n; i += 3) { const a = (i / n) * TAU; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(a) * R, cy + Math.sin(a) * R); ctx.stroke(); }
+    ctx.restore();
+  }
   // the crawlspace under the bleachers: bands of shadow from the boards overhead, a support post, what got dropped
   for (const [tx, ty] of L.crawl) {
     const x = tx * TILE, y = ty * TILE;
@@ -221,6 +238,22 @@ function paint(ctx, g, api) {
       ctx.restore();
     }
   }
+  // stencilled on the sawdust in circus paint, half scuffed out: cheerful directions that all point back to the ring
+  const STENCIL = [["SMILE!", 8, 9, -0.1, 0, 0], ["THIS WAY TO THE SHOW", 9, 21, 0.06, 2, 1], ["CLAP", 13, 3, 0.15, 4, 0], ["HA HA HA", 69, 7, -0.08, 1, 0],
+    ["NO EXIT ← ENJOY THE SHOW", 70, 12, 0.05, 3, 1], ["CLAP LOUDER", 66, 21, -0.12, 5, 0], ["SIT DOWN", 30, 25, 0, 0, 0], ["SMILE!", 52, 1, 0.04, 6, 0]];
+  ctx.save(); ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  for (const [txt, tx, ty, rot, ci, small] of STENCIL) {
+    const x = (tx + 0.5) * TILE, y = (ty + 0.5) * TILE;
+    ctx.save(); ctx.translate(x, y); ctx.rotate(rot);
+    ctx.font = `bold ${small ? 13 : 20}px ${FONT}`;
+    ctx.fillStyle = rgba(VIVID[ci % VIVID.length], 0.55); ctx.fillText(txt, 0, 0);
+    // drips off the bottom of the letters, and scuffs where people walked through it
+    const w = ctx.measureText(txt).width;
+    for (let i = 0; i < 5; i++) { const dx = -w / 2 + hash(tx, ty, 520 + i) * w; ctx.fillRect(dx, 4, 1.4, 4 + hash(tx, ty, 530 + i) * 9); }
+    ctx.fillStyle = "rgba(40,22,14,.35)"; for (let i = 0; i < 3; i++) ctx.fillRect(-w / 2 + hash(tx, ty, 540 + i) * w, -9, 6 + hash(tx, ty, 545 + i) * 8, 18);
+    ctx.restore();
+  }
+  ctx.restore();
   // the bleachers, full
   for (let ty = 0; ty < g.h; ty++) for (let tx = 0; tx < g.w; tx++) if (nameAt(g, tx, ty) === "booth") bleacher(ctx, g, tx, ty);
   const seats = L.seats.slice().sort((a, b) => a.y - b.y);
@@ -250,6 +283,11 @@ function paint(ctx, g, api) {
   let bi = 0;
   for (let ty = 0; ty < g.h; ty++) for (let tx = 0; tx < g.w; tx++) if (nameAt(g, tx, ty) === "booth" && hash(tx, ty, 880) < 0.16) add((tx + 0.5) * TILE, (ty + 0.4) * TILE, 46, ["#ffb43f", "#ff3fa4", "#ffd23f"][bi++ % 3], 0.15);
   if (L.ring) for (let i = 0; i < 6; i++) { const a = (i / 6) * TAU + 0.5; add(L.ring.x + Math.cos(a) * L.ring.rx, L.ring.y + Math.sin(a) * L.ring.ry, 52, "#ff2a3a", 0.2); }
+  // coloured gels left on over the promenade between the outer wall and the stands
+  const GEL = ["#ff3fa4", "#3fe8ff", "#ffb43f", "#b46cff", "#7dff4a"];
+  for (let i = 0, ty = 4; ty < g.h - 3; ty += 6, i++) for (const tx of [5 + (i % 2) * 5, 70 - (i % 2) * 5]) {
+    if (!isSolid(g, tx, ty)) add((tx + 0.5) * TILE, (ty + 0.5) * TILE, 112, GEL[(i + tx) % GEL.length], 0.12);
+  }
 }
 
 /* ---------------------------------------------------------------- backdrop: the stands beyond the walls */
@@ -282,14 +320,50 @@ function voidRects(L, box, inset = 0) {
   }
   return R;
 }
+/* the tent wall behind the back rows: red-and-cream canvas, sagging, with a scalloped gold valance */
+const BAND = 5 * TILE; // depth of the stands before the canvas wall
+let canvasWall = null;
+function canvasWallCanvas() {
+  const c = document.createElement("canvas"); c.width = 96; c.height = 96;
+  const g = c.getContext("2d");
+  for (let i = 0; i < 4; i++) { g.fillStyle = i % 2 ? "#3a2a22" : "#4a0a14"; g.fillRect(i * 24, 0, 24, 96); }
+  const sh = g.createLinearGradient(0, 0, 96, 0); // folds
+  for (let i = 0; i <= 4; i++) sh.addColorStop(i / 4, i % 2 ? "rgba(0,0,0,.35)" : "rgba(255,255,255,.04)");
+  g.fillStyle = sh; g.fillRect(0, 0, 96, 96);
+  g.fillStyle = "rgba(0,0,0,.25)"; for (let k = 0; k < 7; k++) g.fillRect(hash(k, 1, 31) * 96, hash(k, 2, 31) * 96, 1, 4 + hash(k, 3, 31) * 10); // stains running down
+  return c;
+}
+const patCache = new WeakMap();
+function pattern(ctx, key, src, m) {
+  let P = patCache.get(ctx); if (!P) { P = {}; patCache.set(ctx, P); }
+  if (!P[key]) { P[key] = ctx.createPattern(src, "repeat"); if (m && P[key].setTransform) P[key].setTransform(new DOMMatrix(m)); }
+  return P[key];
+}
 function backdrop(ctx, g, t, view, box) {
   const L = layout(g), R = voidRects(L, box);
   if (!R.length) return;
   if (!stands) stands = standsCanvas(false);
-  const pat = ctx.createPattern(stands, "repeat");
-  pat.setTransform && pat.setTransform(new DOMMatrix([0.5, 0, 0, 0.5, 0, 0]));
-  ctx.fillStyle = pat;
+  if (!canvasWall) canvasWall = canvasWallCanvas();
+  ctx.fillStyle = pattern(ctx, "stands", stands, [0.5, 0, 0, 0.5, 0, 0]);
   for (const r of R) ctx.fillRect(r[0], r[1], r[2], r[3]);
+  // beyond the back row: the canvas wall (vertical panels above/below, horizontal ones at the sides)
+  const { mw, mh } = L;
+  const W = voidRects(L, box, BAND);
+  if (!W.length) return;
+  for (const r of W) {
+    const side = r[1] >= -BAND && r[1] + r[3] <= mh + BAND && (r[0] + r[2] <= -BAND || r[0] >= mw + BAND);
+    ctx.fillStyle = side ? pattern(ctx, "wallH", canvasWall, [0, 1, 1, 0, 0, 0]) : pattern(ctx, "wallV", canvasWall, null);
+    ctx.fillRect(r[0], r[1], r[2], r[3]);
+  }
+  // scalloped valance along the seam, bright gold and red
+  const sc = 24;
+  const scallops = (x0, x1, y, dir) => { for (let x = Math.floor(x0 / sc) * sc; x < x1; x += sc) { ctx.fillStyle = ((x / sc) & 1) ? "#c8102e" : "#f2c230"; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + sc, y); ctx.quadraticCurveTo(x + sc / 2, y + dir * 18, x, y); ctx.fill(); } };
+  const scallopsV = (y0, y1, x, dir) => { for (let y = Math.floor(y0 / sc) * sc; y < y1; y += sc) { ctx.fillStyle = ((y / sc) & 1) ? "#c8102e" : "#f2c230"; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + sc); ctx.quadraticCurveTo(x + dir * 18, y + sc / 2, x, y); ctx.fill(); } };
+  const xa = Math.max(box.x0, -BAND), xb = Math.min(box.x1, mw + BAND), ya = Math.max(box.y0, -BAND), yb = Math.min(box.y1, mh + BAND);
+  if (box.y0 < -BAND) scallops(xa, xb, -BAND, 1);
+  if (box.y1 > mh + BAND) scallops(xa, xb, mh + BAND, -1);
+  if (box.x0 < -BAND) scallopsV(ya, yb, -BAND, 1);
+  if (box.x1 > mw + BAND) scallopsV(ya, yb, mw + BAND, -1);
 }
 
 /* ---------------------------------------------------------------- ambient: bunting and balloons */
@@ -306,8 +380,23 @@ function bunting(ctx, x0, x1, y, t, sway, phase) {
     if (((x / 8) | 0) % 9 === 4) { circle(ctx, x + f * 0.5, yy + 2.6, 0.7, "#000"); } // a pennant with an eye
   }
 }
+/* the shadow of a trapeze from the rigging, swinging over the sawdust; someone is still hanging from it */
+function trapezeShadow(ctx, x, y, t, seed) {
+  const sw = Math.sin(t * 0.9 + seed) * 22, len = 46;
+  ctx.save(); ctx.translate(x + sw, y);
+  ctx.fillStyle = "rgba(0,0,0,.26)"; ctx.strokeStyle = "rgba(0,0,0,.22)"; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.moveTo(-9 - sw * 0.5, -len); ctx.lineTo(-9, 0); ctx.moveTo(9 - sw * 0.5, -len); ctx.lineTo(9, 0); ctx.stroke();
+  ctx.fillRect(-11, -1, 22, 2.4);
+  // hanging by the knees, arms trailing
+  ctx.beginPath(); ctx.ellipse(0, 9, 4, 8, 0, 0, TAU); ctx.fill();
+  circle(ctx, 0, 20, 4.2, "rgba(0,0,0,.28)");
+  ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-3, 14); ctx.lineTo(-5 - sw * 0.08, 27); ctx.moveTo(3, 14); ctx.lineTo(5 - sw * 0.08, 27); ctx.stroke();
+  ctx.restore();
+}
+const TRAPEZE = [[34 * TILE, 8.6 * TILE, 0], [47 * TILE, 19.4 * TILE, 2.1], [12 * TILE, 6 * TILE, 4], [68 * TILE, 22 * TILE, 5.3]];
 function ambient(ctx, g, t, view, box) {
   const L = layout(g), red = reducedOf(view), tt = red ? 0 : t;
+  for (const [x, y, sd] of TRAPEZE) if (x > box.x0 - 60 && x < box.x1 + 60 && y > box.y0 - 60 && y < box.y1 + 60) trapezeShadow(ctx, x, y, red ? t * 0.25 : t, sd);
   const x0 = Math.max(TILE, Math.floor(box.x0 / 96) * 96 + 32), x1 = Math.min(L.mw - TILE, box.x1);
   if (box.y0 < 2 * TILE && x1 > x0) bunting(ctx, x0, x1, TILE + 1, tt, !red, 0);
   if (box.y1 > L.mh - 2 * TILE && x1 > x0) bunting(ctx, x0, x1, L.mh - TILE + 2, tt, !red, 2);
@@ -356,11 +445,11 @@ function signSprite(s, ready) {
 function glow(ctx, g, t, view, box) {
   const L = layout(g), red = reducedOf(view), p = g.player, ready = fontsReady();
   // the stands beyond the walls, caught in a roaming pink spot; their eyes find you
-  const R = voidRects(L, box, 6);
+  const R = voidRects(L, box, 6).map((r) => { const x0 = Math.max(r[0], -BAND), y0 = Math.max(r[1], -BAND), x1 = Math.min(r[0] + r[2], L.mw + BAND), y1 = Math.min(r[1] + r[3], L.mh + BAND); return [x0, y0, x1 - x0, y1 - y0]; }).filter((r) => r[2] > 0 && r[3] > 0);
   if (R.length) {
     if (!standsLit) standsLit = standsCanvas(true);
     ctx.save(); ctx.beginPath(); for (const r of R) ctx.rect(r[0], r[1], r[2], r[3]); ctx.clip();
-    const pat = ctx.createPattern(standsLit, "repeat"); pat.setTransform && pat.setTransform(new DOMMatrix([0.5, 0, 0, 0.5, 0, 0]));
+    const pat = pattern(ctx, "standsLit", standsLit, [0.5, 0, 0, 0.5, 0, 0]);
     ctx.globalAlpha = 0.38; ctx.fillStyle = pat; for (const r of R) ctx.fillRect(r[0], r[1], r[2], r[3]);
     ctx.globalCompositeOperation = "lighter";
     const sxp = red ? (box.x0 + box.x1) / 2 : box.x0 + ((Math.sin(t * 0.23) * 0.5 + 0.5) * (box.x1 - box.x0));
@@ -373,6 +462,7 @@ function glow(ctx, g, t, view, box) {
       const hh = hash(i, r, 77); if (hh < 0.15 || (hh >= 0.3 && hh < 0.4)) continue; // faceless ones, turned ones
       const hx = cx * CW + ((r * 12 + 12 + i * 24) % CW), hy = cy * CH + r * 28 + 23 - 9.4 * 1.2;
       if (hx > -8 && hx < L.mw + 8 && hy > -8 && hy < L.mh + 8) continue;
+      if (hx < -BAND || hx > L.mw + BAND || hy < -BAND || hy > L.mh + BAND) continue;
       if (hx < box.x0 || hx > box.x1 || hy < box.y0 || hy > box.y1) continue;
       eyes(ctx, hx, hy - 0.8 * 1.2, 1.2, p, t, hash(cx, cy, r * 4 + i), red, 0.75);
     }
@@ -423,6 +513,17 @@ function glow(ctx, g, t, view, box) {
     ctx.globalAlpha = 0.7; circle(ctx, ex - 1.3, ey, 0.75, "#ffd23f"); circle(ctx, ex + 1.3, ey, 0.75, "#ffd23f");
   }
   ctx.globalAlpha = 1;
+  followSpot(ctx, L, t, red, box);
+}
+/* a rose follow-spot from the rigging wanders the promenade on its own, never quite stopping */
+function followSpot(ctx, L, t, red, box) {
+  const k = red ? t * 0.2 : t;
+  const x = L.mw * (0.5 + 0.42 * Math.sin(k * 0.11)), y = L.mh * (0.5 + 0.38 * Math.sin(k * 0.23 + 1.3));
+  const r = 92;
+  if (x + r < box.x0 || x - r > box.x1 || y + r < box.y0 || y - r > box.y1) return;
+  ctx.globalCompositeOperation = "lighter";
+  ctx.globalAlpha = 0.5; ctx.drawImage(glowSprite("#ffb0d0"), x - r, y - r * 0.8, r * 2, r * 1.6);
+  ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 1;
 }
 /* eye whites with pupils turned to the player; a slow blink now and then (eyes shut, not a flash) */
 function eyes(ctx, x, y, s, p, t, seed, red, a, single) {
