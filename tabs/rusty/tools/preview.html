@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panel Preview</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bangers&family=Creepster&family=Patrick+Hand&display=swap">
+<link rel="stylesheet" href="../../../assets/site.css">
+<link rel="stylesheet" href="../style.css">
+<style>.comic { max-width: var(--pw, 1120px); }</style>
+</head>
+<body>
+<!-- Usage (from repo root via python3 -m http.server):
+     tabs/rusty/tools/preview.html?p=p27            one panel, full width
+     tabs/rusty/tools/preview.html?p=p03&mood=grey  set page mood
+     &w=380 constrains the panel width (simulate a third / phone). -->
+<main class="comic">
+  <section class="page" id="pg"><div class="grid"><figure class="panel s6" id="fig"></figure></div></section>
+</main>
+<script>
+  var q = new URLSearchParams(location.search), id = q.get("p") || "p01";
+  document.getElementById("fig").setAttribute("data-panel", id);
+  document.getElementById("pg").setAttribute("data-mood", q.get("mood") || "day");
+  if (q.get("w")) document.documentElement.style.setProperty("--pw", (+q.get("w") + 60) + "px");
+  document.write('<script src="../model.js"><\/script><script src="../panels/' + id.replace(/[^a-z0-9]/g, "") + '.js"><\/script><script src="../comic.js"><\/script>');
+</script>
+</body>
+</html>

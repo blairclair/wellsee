@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rusty the Janitor · The Wellsee Carnival</title>
+<meta name="description" content="The tale of Rusty the Janitor, who refused the carnival for one day, and sweeps its floors forever. A comic.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bangers&family=Creepster&family=Patrick+Hand&display=swap">
+<link rel="stylesheet" href="../../assets/site.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav id="site-nav"></nav>
+
+<main class="comic" id="comic">
+  <h1 class="sr-only">The Tale of Rusty the Janitor</h1>
+
+  <!-- Layout lives here; art + lettering live in panels/pNN.js. Span classes:
+       s2 = third, s3 = half, s4 = two-thirds, s6 = full. See ARCHITECTURE.md. -->
+
+  <section class="page" data-mood="cover" aria-label="Cover">
+    <div class="grid">
+      <figure class="panel s6" data-panel="p01"></figure>
+    </div>
+  </section>
+
+  <section class="page" data-mood="day" aria-labelledby="ch1">
+    <header class="page-head"><span class="num">Chapter One</span> <h2 id="ch1">Hollis Creek</h2></header>
+    <div class="grid">
+      <figure class="panel s6" data-panel="p02"></figure>
+      <figure class="panel s2" data-panel="p03"></figure>
+      <figure class="panel s2" data-panel="p04"></figure>
+      <figure class="panel s2" data-panel="p05"></figure>
+    </div>
+  </section>
+
+  <section class="page" data-mood="day" aria-labelledby="ch2">
+    <header class="page-head"><span class="num">Chapter Two</span> <h2 id="ch2">The Letter</h2></header>
+    <div class="grid">
+      <figure class="panel s4" data-panel="p06"></figure>
+      <figure class="panel s2" data-panel="p07"></figure>
+      <figure class="panel s6" data-panel="p08"></figure>
+    </div>
+  </section>
+
+  <section class="page" data-mood="light" aria-labelledby="ch3">
+    <header class="page-head"><span class="num">Chapter Three</span> <h2 id="ch3">The Light</h2></header>
+    <div class="grid">
+      <figure class="panel s6" data-panel="p09"></figure>
+      <figure class="panel s2" data-panel="p10"></figure>
+      <figure class="panel s2" data-panel="p11"></figure>
+      <figure class="panel s2" data-panel="p12"></figure>
+      <figure class="panel s6" data-panel="p13"></figure>
+    </div>
+  </section>
+
+  <section class="page" data-mood="noon" aria-labelledby="ch4">
+    <header class="page-head"><span class="num">Chapter Four</span> <h2 id="ch4">Mae's Diner</h2></header>
+    <div class="grid">
+      <figure class="panel s3" data-panel="p14"></figure>
+      <figure class="panel s3" data-panel="p15"></figure>
+      <figure class="panel s6" data-panel="p16"></figure>
+      <figure class="panel s2" data-panel="p17"></figure>
+      <figure class="panel s2" data-panel="p18"></figure>
+      <figure class="panel s2" data-panel="p19"></figure>
+      <figure class="panel s6" data-panel="p20"></figure>
+    </div>
+  </section>
+
+  <section class="page" data-mood="lurid" aria-labelledby="ch5">
+    <header class="page-head"><span class="num">Chapter Five</span> <h2 id="ch5">The Taking</h2></header>
+    <div class="grid">
+      <figure class="panel s6" data-panel="p21"></figure>
+      <figure class="panel s3" data-panel="p22"></figure>
+      <figure class="panel s3" data-panel="p23"></figure>
+    </div>
+  </section>
+
+  <section class="page" data-mood="grey" aria-labelledby="ch6">
+    <header class="page-head"><span class="num">Chapter Six</span> <h2 id="ch6">Forever</h2></header>
+    <div class="grid">
+      <figure class="panel s2" data-panel="p24"></figure>
+      <figure class="panel s2" data-panel="p25"></figure>
+      <figure class="panel s2" data-panel="p26"></figure>
+      <figure class="panel s6 final" data-panel="p27"></figure>
+    </div>
+  </section>
+
+  <p class="coda">Somewhere, a little girl sleeps with a wooden rabbit under her pillow.<br>She has her father's eyes.</p>
+  <noscript><p class="coda">This comic draws its panels with JavaScript. Enable it to see Rusty.</p></noscript>
+</main>
+
+<script src="../../assets/tabs.js"></script>
+<script src="../../assets/nav.js" data-active="rusty"></script>
+<script src="model.js"></script>
+<script src="panels/p01.js"></script>
+<script src="panels/p02.js"></script>
+<script src="panels/p03.js"></script>
+<script src="panels/p04.js"></script>
+<script src="panels/p05.js"></script>
+<script src="panels/p06.js"></script>
+<script src="panels/p07.js"></script>
+<script src="panels/p08.js"></script>
+<script src="panels/p09.js"></script>
+<script src="panels/p10.js"></script>
+<script src="panels/p11.js"></script>
+<script src="panels/p12.js"></script>
+<script src="panels/p13.js"></script>
+<script src="panels/p14.js"></script>
+<script src="panels/p15.js"></script>
+<script src="panels/p16.js"></script>
+<script src="panels/p17.js"></script>
+<script src="panels/p18.js"></script>
+<script src="panels/p19.js"></script>
+<script src="panels/p20.js"></script>
+<script src="panels/p21.js"></script>
+<script src="panels/p22.js"></script>
+<script src="panels/p23.js"></script>
+<script src="panels/p24.js"></script>
+<script src="panels/p25.js"></script>
+<script src="panels/p26.js"></script>
+<script src="panels/p27.js"></script>
+<script src="comic.js"></script>
+</body>
+</html>

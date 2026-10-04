@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rusty Model Sheet</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bangers&family=Patrick+Hand&display=swap">
+<style>
+  :root { --paper: #efe4c8; --ink: #15100d; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --paper: #efe4c8; } }
+  body { background: var(--paper); color: var(--ink); font-family: "Patrick Hand", sans-serif; margin: 0; padding: 12px; }
+  h1 { font-family: Bangers, sans-serif; letter-spacing: 2px; margin: 0 0 8px; }
+  svg { width: 100%; height: auto; display: block; background: #f6eedb; border: 3px solid var(--ink); }
+</style>
+</head>
+<body>
+<h1>Rusty: model sheet (open from the repo root via http.server)</h1>
+<div id="sheet"></div>
+<script src="../model.js"></script>
+<script>
+(function () {
+  var R = window.RUSTY, k = R.ctx("ms"), s = "";
+  function label(t, x, y) { return '<text x="' + x + '" y="' + y + '" font-family="Patrick Hand" font-size="22" text-anchor="middle">' + t + "</text>"; }
+  /* Row 1: Rusty turnaround + wear */
+  var row = 470;
+  [["stand", "work", 0, "neutral"], ["mop", "work", 0, "neutral"], ["walkCarry", "suit", 0, "resolve"], ["sit", "suit", 0, "resigned"],
+   ["mop", "eternal", .4, "resigned"], ["mop", "eternal", .7, "resigned"], ["mop", "eternal", 1, "resigned"]].forEach(function (a, i) {
+    var x = 120 + i * 200;
+    s += R.person(k, { x: x, y: row, s: 1, pose: a[0], outfit: a[1], wear: a[2], expr: a[3], light: 1,
+      carry: a[0] === "walkCarry" ? R.woodRabbit(k, { s: .5 }) : null });
+    s += label(a[0] + " / " + a[1] + " / w" + a[2], x, row + 40);
+  });
+  /* Row 2: Rusty heads, expressions */
+  var ex = ["neutral", "tender", "sad", "fear", "resolve", "anger", "resigned", "anguish", "cry", "drunk", "closed"];
+  ex.forEach(function (e, i) {
+    var x = 80 + i * 128;
+    s += R.head(k, { x: x, y: 640, s: .72, expr: e, turn: .2, light: 1, ch: e === "drunk" ? "rustyYoung" : "rusty" });
+    s += label(e, x, 720);
+  });
+  /* Row 3: wear progression heads */
+  [0, .25, .5, .75, 1].forEach(function (w, i) {
+    var x = 100 + i * 150;
+    s += R.head(k, { x: x, y: 840, s: .9, expr: "resigned", wear: w, light: -1, turn: -.2 });
+    s += label("wear " + w, x, 930);
+  });
+  /* Danny, Jess, Danny18 */
+  s += R.person(k, { x: 900, y: 1180, ch: "danny", outfit: "danny", pose: "stand", expr: "sad", light: 1, flip: -1 });
+  s += R.person(k, { x: 1060, y: 1180, ch: "jess", outfit: "jess", pose: "stand", expr: "tender", light: 1, flip: -1 });
+  s += R.person(k, { x: 1220, y: 1180, ch: "danny18", outfit: "gown", pose: "stand", expr: "anger", hat: "mortar" });
+  s += R.person(k, { x: 1380, y: 1180, ch: "rustyYoung", outfit: "coat", pose: "stand", expr: "drunk", stoop: -6 });
+  s += label("Danny 28 / Jess / Danny 18 / Rusty -10y", 1140, 1220);
+  /* Players + rabbit + props */
+  s += R.player(k, { x: 120, y: 1560, pose: "stand", variant: 0 });
+  s += R.player(k, { x: 340, y: 1560, pose: "wave", variant: 1 });
+  s += R.player(k, { x: 560, y: 1560, pose: "point", variant: 2 });
+  s += R.monsterRabbit(k, { x: 900, y: 1560 });
+  s += R.woodRabbit(k, { x: 1180, y: 1540, s: 1.6 });
+  s += R.bucket(k, { x: 1350, y: 1540, water: "#7a1414" });
+  s += label("The Players (3 variants) · rabbit-thing · the carved rabbit · bucket", 760, 1600);
+  document.getElementById("sheet").innerHTML = '<svg viewBox="0 0 1500 1620" xmlns="http://www.w3.org/2000/svg">' + R.defs(k) + s + "</svg>";
+})();
+</script>
+</body>
+</html>
