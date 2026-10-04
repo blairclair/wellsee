@@ -44,7 +44,23 @@ unlit pupils via new optional `expr.pupil`/`expr.glint:false`). Seated poses (dy
 thighs: sit, sitLow, sit3q, sitChin, sitSlump) get a flatter pelvis that sits on the seat line
 instead of the cushion-like standing pelvis. p12 and p27 checked; all 27 panels render.
 
-**Next, in this order (nothing below is started):** step 2 (head structure + `grief`/`hollow`),
+**Live (2026-10-04, "rusty model: creepy helpers, Unwilling options, v2 cast and props"), steps 3-4 + cast:**
+- Helpers (end of model.js): `R.hatch`, `R.spatter`, `R.dryBrush`, `R.wrongShadow` (feFlood/feComposite),
+  `R.grain`, `R.darkEdges`, seeded `R.rng`. No feTurbulence.
+- `R.player`: limbs are now organic tubes by default (`tube:false` restores the old limb); new options
+  `paint:"grey"`, `mouth2`, `pin`, `joints:0..1`; poses may carry `legs`, `dy`, `lean`; new
+  `R.PPOSE.crouch` (p48 hover, dy frame) and `R.PPOSE.shoulder` (p54).
+- Cast: `R.CH.rustyYounger`, `danny6`, `danny37`, `jess37`, `girl` (+ `R.GIRL[4|6|7|8]` size/outfit),
+  `townA/B/C`; `FACE.child`; CH fields `headS`, `freckles`, `cowlick`. Outfits `tee`, `kid`, `carol`,
+  `pyjamas`, `puffy`, `robe`, `townCoat` (flags `tee`, `short`, `stripes`, `puffy`).
+- Figures/props: `R.townsfolk`, `R.choir` (red thread from the mouth to `o.to`), `R.kept` (pale, palms
+  on the glass, `fog`), `R.POSE.press`, `R.sockRabbit`, `R.whiskey`, `R.baby`, `R.woodRabbit` `worn`/`carve`.
+- Nametag: `R.person` `o.tag` overrides the text (`"RUST"`, `"R"`, `""`), `o.tagFade` 0..1 fades it.
+- Seen on the model test sheet: players, cast row. **Not yet eyeballed** (review-round cap; XML-valid
+  only): choir, kept, sock rabbit, whiskey, baby, carved rabbit, and the helper demos. Shoot the
+  modelsheet once before the fleet relies on them.
+
+**Next, in this order (steps 2-4 and the cast/props above are now done; style.css and the guide remain):** step 2 (head structure + `grief`/`hollow`),
 step 3 (creepy helpers), step 4 (Unwilling options + organic player limbs), then the SCRIPT-v2 model
 needs (Rusty 39, Danny 6, Carol adult, the granddaughter baby/4/6/8, Danny and Jess at 37, crowd,
 Choir, kept-in-mirrors, two Unwilling poses `crouch`/`shoulder` (needs `pose.legs`/`pose.dy`/absolute

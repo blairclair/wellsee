@@ -231,6 +231,8 @@
     danny: "M-42,-24 C-44,-70 -24,-82 0,-82 C24,-82 44,-70 42,-24 C42,6 36,34 20,52 C10,62 -10,62 -20,52 C-36,34 -42,6 -42,-24Z",
     jess: "M-40,-24 C-42,-70 -22,-80 0,-80 C22,-80 42,-70 40,-24 C40,8 32,36 16,50 C8,58 -8,58 -16,50 C-32,36 -40,8 -40,-24Z"
   };
+  /* a rounder, softer child face */
+  FACE.child = "M-44,-26 C-46,-72 -24,-84 0,-84 C24,-84 46,-72 44,-26 C45,8 38,38 20,52 C10,59 -10,59 -20,52 C-38,38 -45,8 -44,-26Z";
   R.FACE = FACE;
 
   /* Character presets (MODEL.md). */
@@ -242,6 +244,30 @@
     carol: { face: FACE.jess, skin: "#e9bf9c", hair: "#9a4a22", grey: 0, brow: "#6a3018", hairStyle: "long", must: false, nose: .75, droop: 0, age: .1, browW: .75, lashes: true, flush: .2 },
     jess: { face: FACE.jess, skin: "#d9a27c", hair: "#5a2e1c", grey: 0, brow: "#3e2014", hairStyle: "long", must: false, nose: .7, droop: 0, age: 0, browW: .75, lashes: true, flush: .15 }
   };
+  /* SCRIPT-v2 cast (add-only). headS scales the head on R.person (children); freckles and
+     cowlick are drawn by R.head. */
+  (function (C) {
+    var add = {
+      /* Rusty at 39 (p32): sober, happy, full red hair and mustache; use outfit "tee", no stoop */
+      rustyYounger: { face: FACE.rusty, skin: "#e8b48e", hair: "#b8572b", grey: 0, brow: "#8f421f", hairStyle: "young", must: true, nose: 1.15, droop: 1, age: .3, browW: 1.2, flush: .3 },
+      /* Danny at 6 (p32): freckles, cowlick */
+      danny6: { face: FACE.child, skin: "#efc6a4", hair: "#4a3324", grey: 0, brow: "#3a281b", hairStyle: "full", must: false, nose: .7, droop: 0, age: 0, browW: .8, flush: .25, headS: 1.45, freckles: true, cowlick: true },
+      /* Danny at about 37 (p41-p52): first grey at the temples, a little heavier in the face */
+      danny37: { face: FACE.danny, skin: "#e3b693", hair: "#3b2a20", grey: .18, brow: "#2d1f17", hairStyle: "full", must: false, nose: 1.08, droop: 1.5, age: .45, browW: 1, stubble: .45, flush: .05 },
+      /* Jess at about 37 (p42, p46) */
+      jess37: { face: FACE.jess, skin: "#d59e78", hair: "#55301f", grey: .08, brow: "#3e2014", hairStyle: "long", must: false, nose: .72, droop: .5, age: .35, browW: .75, lashes: true, flush: .1 },
+      /* Carol, the granddaughter (p41-p52): auburn like her grandmother, Carol's eyes. She is
+         "Girl" in balloons and "the girl" in alt text until p51. Size by age with R.GIRL. */
+      girl: { face: FACE.child, skin: "#f0c9a8", hair: "#a3502a", grey: 0, brow: "#7a3a1c", hairStyle: "long", must: false, nose: .62, droop: 0, age: 0, browW: .7, lashes: true, flush: .3, headS: 1.4, freckles: true },
+      /* generic townsfolk heads (procession, AA members, teacher) */
+      townA: { face: FACE.danny, skin: "#d8a888", hair: "#8a8580", grey: .5, brow: "#5a5048", hairStyle: "full", must: false, nose: 1.1, droop: 2, age: .7, browW: 1, stubble: .2, flush: .1 },
+      townB: { face: FACE.jess, skin: "#c98f6c", hair: "#2e2622", grey: .1, brow: "#2a201a", hairStyle: "long", must: false, nose: .8, droop: 1, age: .4, browW: .8, lashes: true, flush: .1 },
+      townC: { face: FACE.rusty, skin: "#e6c0a4", hair: "#d8d4cc", grey: 1, brow: "#a8a296", hairStyle: "full", must: false, nose: .9, droop: 2.5, age: 1.1, browW: .8, flush: .15 }
+    };
+    for (var key in add) C[key] = add[key];
+  })(R.CH);
+  /* the granddaughter's size by age: R.person(k, {ch:"girl", s: R.GIRL[8].s, outfit: R.GIRL[8].outfit}) */
+  R.GIRL = { 4: { s: .4, outfit: "pyjamas" }, 6: { s: .46, outfit: "pyjamas" }, 7: { s: .5, outfit: "pyjamas" }, 8: { s: .54, outfit: "puffy" } };
 
   /* Expressions: bi/bo = inner/outer brow raise, eye = openness, curve = smile(+)/frown(-),
      open = mouth open, tears, look = pupil shift (-1..1). */
@@ -407,6 +433,9 @@
         " C" + f(mx + 22) + ",31 " + f(mx + 16) + ",33 " + f(mx + 12) + ",30 C" + f(mx + 6) + ",34 " + f(mx - 6) + ",34 " + f(mx - 12) + ",30 C" + f(mx - 16) + ",33 " + f(mx - 22) + ",31 " + f(mx - 27) + "," + f(36 + dd) + "Z", mc, INK, lw);
       s += P("M" + f(mx - 16) + ",27 l-3,6 M" + f(mx - 8) + ",26 l-2,6 M" + f(mx + 8) + ",26 l2,6 M" + f(mx + 16) + ",27 l3,6", "none", INK, lw * .4, 'opacity=".6"');
     }
+    if (c.freckles) [-1, 1].forEach(function (sd) {
+      [[22, 8], [28, 13], [19, 15], [31, 6], [25, 18]].forEach(function (q) { s += '<circle cx="' + f(sd * q[0] + dx) + '" cy="' + q[1] + '" r="1.6" fill="#a8603e" opacity=".75"/>'; });
+    });
     /* hair */
     if (c.hairStyle === "fringe" || c.hairStyle === "young") {
       [-1, 1].forEach(function (sd) {
@@ -421,6 +450,7 @@
     } else if (c.hairStyle === "full") {
       s += P("M-46,-14 C-54,-74 -22,-96 6,-92 C36,-90 56,-70 46,-14 C44,-38 36,-52 26,-58 C16,-48 -4,-50 -14,-60 C-22,-50 -34,-44 -40,-34 C-42,-26 -44,-20 -46,-14Z", hair, INK, lw);
       s += P("M-20,-80 C-10,-70 0,-68 10,-72 M14,-84 C22,-74 30,-70 38,-62", "none", INK, lw * .5, 'opacity=".6"');
+      if (c.cowlick) s += P("M2,-90 C-4,-104 6,-116 16,-110 C8,-108 6,-100 10,-92Z", hair, INK, lw * .8);
     } else if (c.hairStyle === "long") {
       s += P("M-44,-20 C-50,-78 -18,-94 4,-90 C32,-88 52,-70 44,-20 C40,-46 30,-58 18,-64 C4,-52 -22,-50 -36,-46 C-40,-36 -42,-28 -44,-20Z", hair, INK, lw);
     }
@@ -441,6 +471,20 @@
     jess: { shirt: "#b46a58", pants: "#3a3f55", boots: "#3a2a24", belly: true },
     coat: { shirt: "#4b4237", pants: "#3a3530", boots: "#2b1d14", under: "#c9c0ae", tie: "#5a2a22", jacket: true }
   };
+  /* SCRIPT-v2 outfits (add-only). tee: crew neck, no collar or buttons; short: short sleeves
+     (bare forearms); puffy: quilted coat bands. */
+  (function (O) {
+    var add = {
+      tee: { shirt: "#c9c2ae", pants: "#3d4a63", boots: "#4a3324", tee: true, short: true },
+      kid: { shirt: "#b8483a", pants: "#3e5a80", boots: "#c9c2b0", tee: true, short: true, stripes: "#efe6d2" },
+      carol: { shirt: "#6f8a6a", pants: "#6a4e3a", boots: "#4a3324", tee: true },
+      pyjamas: { shirt: "#b7c6dc", pants: "#b7c6dc", boots: "#e6d9c6", tee: true, stripes: "#e9eef6" },
+      puffy: { shirt: "#c4475a", pants: "#b7c6dc", boots: "#e6d9c6", tee: true, puffy: true },
+      robe: { shirt: "#7d6f8a", pants: "#5a5466", boots: "#3a3030", tee: true },
+      townCoat: { shirt: "#5a5248", pants: "#3a3836", boots: "#2b2420", under: "#b8b0a0", tie: "#3a3a3a", jacket: true }
+    };
+    for (var key in add) O[key] = add[key];
+  })(R.OUTFIT);
 
   /* ---------- poses (feet at 0, +x forward). arms/legs: [shoulder|hip, elbow|knee, hand|foot] ---------- */
   var SH = [[-46, -298], [46, -298]];
@@ -571,16 +615,21 @@
       tg += P("M-4,-316 L4,-316 L7,-268 L0,-256 L-7,-268Z", of.tie, INK, lw * .6);
       if (of.jacket) tg += P("M-18,-320 L-4,-262 L-12,-226 M18,-320 L4,-262 L12,-226", "none", INK, lw * .7) +
         '<circle cx="3" cy="-228" r="3" fill="' + INK + '"/><circle cx="3" cy="-206" r="3" fill="' + INK + '"/>';
+    } else if (of.tee) {
+      if (of.stripes) for (var st = -300; st < -190; st += 22) tg += P("M-60," + st + " L60," + st, "none", of.stripes, 7, 'opacity=".8"');
+      if (of.puffy) for (var pq = -290; pq < -190; pq += 26) tg += P("M-58," + pq + " C-20," + (pq + 6) + " 20," + (pq + 6) + " 58," + pq, "none", INK, lw * .5, 'opacity=".55"');
+      tg += P("M-18,-321 C-10,-308 10,-308 18,-321", "none", INK, lw * .8);
     } else if (!of.gown) {
       tg += P("M-18,-321 L0,-298 L-5,-288 L-24,-308Z M18,-321 L0,-298 L5,-288 L24,-308Z", mix(shirt, "#fff", .1), INK, lw * .6);
       tg += [-276, -252, -228, -204].map(function (y) { return '<circle cx="2" cy="' + y + '" r="2.4" fill="' + INK + '"/>'; }).join("");
     }
     if (of.gown) tg += P("M-20,-312 L0,-282 L20,-312", "none", "#d9b23a", 6);
     if (of.belly) tg += P("M40,-270 C62,-250 64,-214 46,-192", "none", mix(shirt, "#ffffff", .35), 5, 'opacity=".7"');
+    var tagText = o.tag != null ? String(o.tag) : of.tag;
     if (of.tag) {
       var tagFill = of.carnival ? "#a3171c" : "#efe8d8", tagInk = of.carnival ? "#f6d27a" : "#a3171c";
       tg += '<ellipse cx="26" cy="-268" rx="16" ry="7.5" fill="' + tagFill + '" stroke="' + INK + '" stroke-width="1.6"/>' +
-        '<text x="0" y="0" transform="translate(26,-265.4) scale(' + (o.flip || 1) + ',1)" text-anchor="middle" font-family="Patrick Hand, sans-serif" font-size="8" font-weight="700" fill="' + tagInk + '">' + esc(of.tag) + "</text>";
+        '<text x="0" y="0" transform="translate(26,-265.4) scale(' + (o.flip || 1) + ',1)" text-anchor="middle" font-family="Patrick Hand, sans-serif" font-size="8" font-weight="700" fill="' + tagInk + '"' + (o.tagFade != null ? ' opacity="' + f(1 - o.tagFade) + '"' : "") + ">" + esc(tagText) + "</text>";
       if (of.carnival) tg += P("M8,-282 l8,-8 l8,8 l-8,8Z", "#f6d27a", INK, 1.2);
     }
     if (of.stains) tg += '<path d="M-20,-230 c8,-6 18,2 14,10 c-4,8 -18,6 -14,-10Z M14,-206 c6,-2 10,4 6,8 c-6,3 -10,-4 -6,-8Z" fill="#4a1512" opacity=".65"/>' +
@@ -627,7 +676,9 @@
       /* tapered sleeve (heavier ink on the shadow side), elbow fold, cuff, then a small
          oriented mitten hand centred on the hand point (same footprint as the old r=11 dot) */
       var arm = [A[0], el, wr];
-      var out = tube(arm, 29, 20, shirt, lw, { bulge: 2, shade: shadeOf(arm) }) + crease(arm, 12);
+      var out = of.short ? tube(arm, 25, 18, skin, lw, { bulge: 2, shade: shadeOf(arm) }) +
+        tube([A[0], [A[0][0] + (el[0] - A[0][0]) * .5, A[0][1] + (el[1] - A[0][1]) * .5]], 30, 27, shirt, lw, { shade: shadeOf(arm) }) :
+        tube(arm, 29, 20, shirt, lw, { bulge: 2, shade: shadeOf(arm) }) + crease(arm, 12);
       var ang = Math.atan2(hd[1] - el[1], hd[0] - el[0]) * 180 / Math.PI, ts = A === arms[0] ? 1 : -1;
       var hand = P(smooth([[-9, -9], [2, -11], [12, -8], [16, -1], [13, 7], [3, 10], [-8, 9], [-11, 0]], true), skin, INK, lw * .75) +
         P(smooth([[-2, -8 * ts], [6, -15 * ts], [12, -13 * ts], [9, -7 * ts]]), skin, INK, lw * .6) +
@@ -645,8 +696,8 @@
     var nb = R0([wx(0), -300]), nt = R0([wx(0), -328]);
     var neck = tube([nb, nt], 28, 24, skin, lw, { shade: sx });
     if (w > .5) neck += P("M" + pt([nb[0] - 6, nb[1] - 2]) + " L" + pt([nt[0] - 4, nt[1] + 4]) + " M" + pt([nb[0] + 6, nb[1] - 2]) + " L" + pt([nt[0] + 4, nt[1] + 4]), "none", INK, lw * .45, 'opacity="' + f((w - .5) * 1.4) + '"');
-    var hc = R0([wx(0) + 2, -362]);
-    var head = R.head(k, { x: hc[0], y: hc[1], s: .52, rot: stoop + (o.headTilt || 0), ch: ch, expr: o.expr, turn: o.turn == null ? .25 + .45 * v : o.turn, wear: w, light: o.light, lw: 5.5, hat: o.hat, look: o.look, glint: o.glint });
+    var hS = c.headS || 1, hc = R0([wx(0) + 2, -362 - (hS - 1) * 36]);
+    var head = R.head(k, { x: hc[0], y: hc[1], s: .52 * hS, rot: stoop + (o.headTilt || 0), ch: ch, expr: o.expr, turn: o.turn == null ? .25 + .45 * v : o.turn, wear: w, light: o.light, lw: 5.5, hat: o.hat, look: o.look, glint: o.glint });
     return "<g " + T(o) + ">" + neck + s + head + "</g>";
   };
   R.rusty = function (k, o) { o.ch = o.ch || "rusty"; return R.person(k, o); };
@@ -662,7 +713,11 @@
     s += P("M28,-50 C30,-70 38,-82 42,-80 C46,-74 38,-60 33,-48Z", wd, INK, 2.2);
     s += '<circle cx="-30" cy="-16" r="6" fill="' + mix(wd, "#fff", .2) + '" stroke="' + INK + '" stroke-width="2"/>';
     s += '<circle cx="31" cy="-42" r="2" fill="' + INK + '"/>';
-    s += P("M-20,-24 C-10,-28 0,-26 10,-22 M-14,-12 C-4,-16 6,-14 14,-8 M-24,-6 C-16,-8 -8,-6 0,-2", "none", dk, 1.2, 'opacity=".7"');
+    /* o.worn: the knife marks smoothed away by years of handling, a polished highlight;
+       o.carve: text carved on a small base ("MR. BUTTONS", p37) */
+    if (o.worn) s += P("M-22,-30 C-10,-36 6,-34 16,-28 M16,-46 C22,-50 30,-50 34,-46", "none", mix(wd, "#fff4dc", .55), 3, 'opacity=".7"');
+    else s += P("M-20,-24 C-10,-28 0,-26 10,-22 M-14,-12 C-4,-16 6,-14 14,-8 M-24,-6 C-16,-8 -8,-6 0,-2", "none", dk, 1.2, 'opacity=".7"');
+    if (o.carve) s += P("M-38,0 L36,0 L34,12 L-36,12Z", dk, INK, 2) + '<text x="-1" y="9.5" text-anchor="middle" font-family="Patrick Hand, sans-serif" font-size="8.5" fill="' + mix(wd, "#fff4dc", .4) + '">' + esc(o.carve) + "</text>";
     return "<g " + T(o) + ">" + s + "</g>";
   };
   /* A mop bucket (yellow) with optional red water. ~70 tall. */
@@ -1150,7 +1205,7 @@
         line.push([sp[j][0] - ty / m * off, sp[j][1] + tx / m * off]);
       }
       var dash = f(10 + rnd() * 40) + " " + f(2 + rnd() * 14) + " " + f(6 + rnd() * 30) + " " + f(3 + rnd() * 10);
-      s += P(smooth(line), "none", color, f(w / n * (.5 + rnd() * .7)), 'stroke-linecap="round" stroke-dasharray="' + dash + '" stroke-dashoffset="' + f(rnd() * 40) + '"');
+      s += P(smooth(line), "none", color, f(w / n * (.5 + rnd() * .7)), 'stroke-dasharray="' + dash + '" stroke-dashoffset="' + f(rnd() * 40) + '"');
     }
     return '<g opacity="' + (o.op == null ? .85 : o.op) + '">' + s + "</g>";
   };
@@ -1177,5 +1232,84 @@
     return '<defs><radialGradient id="' + id + '" cx="50%" cy="46%" r="75%"><stop offset="' + inr + '" stop-color="' + c + '" stop-opacity="0"/><stop offset="' + f(inr + (1 - inr) * .55) + '" stop-color="' + c + '" stop-opacity=".45"/><stop offset="1" stop-color="' + c + '" stop-opacity="1"/></radialGradient></defs>' +
       '<rect width="' + w + '" height="' + h + '" fill="url(#' + id + ')" opacity="' + (o.op == null ? .85 : o.op) + '" pointer-events="none"/>' +
       P("M0,0 L" + w + ",0 L" + w + "," + f(h * .06) + " C" + f(w * .7) + "," + f(h * .02) + " " + f(w * .3) + "," + f(h * .07) + " 0," + f(h * .03) + "Z", c, null, 0, 'opacity="' + f((o.op == null ? .85 : o.op) * .5) + '"');
+  };
+
+  /* ---------- SCRIPT-v2 props and figures ---------- */
+  /* Mister Buttons: a lumpy grey sock rabbit with mismatched button eyes, sitting, ~110 tall. */
+  R.sockRabbit = function (k, o) {
+    o = o || {};
+    var g = o.color || "#9a968c", dk = mix(g, INK, .35), s = "";
+    s += P("M-34,0 C-46,-20 -40,-52 -16,-58 C6,-62 30,-50 34,-26 C38,-10 30,0 22,2 C8,6 -20,6 -34,0Z", g, INK, 2.6);
+    s += P("M-24,-54 C-30,-80 -26,-104 -16,-108 C-6,-104 -6,-80 -10,-58Z M2,-58 C6,-86 20,-104 30,-100 C36,-90 22,-70 12,-56Z", g, INK, 2.4);
+    s += P("M-18,-96 C-17,-84 -16,-72 -15,-62 M20,-94 C16,-82 12,-72 9,-62", "none", dk, 1.4, 'opacity=".7"');
+    s += P("M-30,-20 C-22,-16 -10,-18 -4,-24 M8,-10 C16,-6 26,-8 30,-14", "none", dk, 1.4, 'opacity=".6"');
+    s += '<circle cx="-14" cy="-38" r="5" fill="#2a3a6a" stroke="' + INK + '" stroke-width="1.6"/><circle cx="-15" cy="-38" r=".9" fill="#ddd"/><circle cx="-13" cy="-38" r=".9" fill="#ddd"/>';
+    s += '<circle cx="10" cy="-40" r="3.4" fill="#a3502a" stroke="' + INK + '" stroke-width="1.4"/>';
+    s += P("M-4,-30 l3,3 l3,-3", "none", INK, 1.4) + P("M-8,-22 h12", "none", "#6a2420", 1.4, 'stroke-dasharray="2 2"');
+    return "<g " + T(o) + ">" + s + "</g>";
+  };
+  /* A sealed whiskey bottle: tax stamp unbroken over the cap, dust on the shoulders. ~150 tall. */
+  R.whiskey = function (k, o) {
+    o = o || {};
+    var gl = o.color || "#7a3e14", s = "";
+    var b = "M-26,0 C-30,-8 -30,-80 -26,-92 C-22,-104 -12,-108 -9,-116 L-9,-142 L9,-142 L9,-116 C12,-108 22,-104 26,-92 C30,-80 30,-8 26,0Z";
+    s += P(b, gl, INK, 2.6) + P("M-26,-60 L26,-60 L26,-6 L-26,-6Z", mix(gl, INK, .45), null, 0, 'opacity=".45"');
+    s += P("M-20,-78 L20,-78 L20,-30 L-20,-30Z", "#e7dcc0", INK, 1.8) + P("M-14,-64 h28 M-12,-56 h24 M-14,-44 h28", "none", "#5a2a1a", 1.6) +
+      '<text x="0" y="-68" text-anchor="middle" font-family="Bangers, sans-serif" font-size="9" fill="#7a1f24">OLD No.</text>';
+    s += P("M-10,-150 L10,-150 L10,-140 L-10,-140Z", "#2a1a12", INK, 2) + P("M-4,-152 L4,-152 L5,-126 L-5,-126Z", "#d8cfae", INK, 1.2) + P("M-4,-140 l8,4", "none", "#4a6a3a", 1.2);
+    s += P("M-17,-92 C-12,-100 -10,-104 -9,-112 M22,-94 C18,-100 14,-104 11,-110", "none", "#cfc8b6", 3, 'opacity=".55"');
+    s += P("M-18,-22 C-16,-60 -16,-84 -12,-96", "none", "#fff", 3, 'opacity=".22"');
+    return "<g " + T(o) + ">" + s + "</g>";
+  };
+  /* The granddaughter as a baby (p41): a swaddled bundle with a sleeping face, ~110 long. */
+  R.baby = function (k, o) {
+    o = o || {};
+    var c = R.CH.girl, s = "";
+    s += P("M-56,10 C-62,-20 -40,-40 -6,-38 C30,-36 58,-22 56,4 C54,26 20,36 -14,34 C-40,32 -52,26 -56,10Z", o.blanket || "#e9dcc6", INK, 2.6);
+    s += P("M-30,-30 C-10,-10 10,6 40,18 M-44,0 C-20,8 8,22 30,30", "none", INK, 1.4, 'opacity=".45"');
+    s += '<circle cx="-20" cy="-12" r="20" fill="' + c.skin + '" stroke="' + INK + '" stroke-width="2.4"/>';
+    s += P("M-30,-30 C-26,-38 -16,-38 -12,-32", "none", c.hair, 4) + P("M-29,-12 q4,3 8,0 M-18,-12 q4,3 8,0", "none", INK, 1.6) +
+      P("M-22,-3 q3,2 6,0", "none", INK, 1.4) + '<circle cx="-30" cy="-5" r="3.5" fill="#e48a7a" opacity=".5"/><circle cx="-8" cy="-5" r="3.5" fill="#e48a7a" opacity=".5"/>';
+    return "<g " + T(o) + ">" + s + "</g>";
+  };
+  /* Townsfolk in the procession (p46, p52): faces turned up, carrying something. o = {seed, carry:
+     "plate"|"book"|"cup", expr, light, op, plus any R.person option} */
+  R.townsfolk = function (k, o) {
+    o = o || {};
+    var sd = o.seed || 0, chs = ["townA", "townB", "townC"], ofs = ["robe", "townCoat", "pyjamas", "robe"];
+    var items = { plate: P("M-22,0 C-22,6 22,6 22,0 C22,-4 -22,-4 -22,0Z", "#ece6d8", INK, 2), book: P("M-14,-10 L14,-10 L14,10 L-14,10Z", "#6a2a22", INK, 2) + P("M-10,-10 v20", "none", "#d9c79a", 2), cup: P("M-8,-8 L8,-8 L6,6 L-6,6Z", "#e8e2d4", INK, 2) + P("M8,-4 c6,0 6,7 0,7", "none", INK, 2) };
+    var q = {}; for (var key in o) q[key] = o[key];
+    q.ch = o.ch || chs[sd % 3]; q.outfit = o.outfit || ofs[sd % 4]; q.pose = o.pose || "hold";
+    q.expr = o.expr || "hollow"; q.headTilt = o.headTilt != null ? o.headTilt : -14;
+    q.carry = items[o.carry] || o.carry;
+    return R.person(k, q);
+  };
+  /* The Choir (p39): a seated, unbreathing figure, mouth stretched open, a red thread from the
+     mouth to o.to = [x, y] (figure-local units, e.g. an organ pipe). Any R.person option. */
+  R.choir = function (k, o) {
+    o = o || {};
+    var q = {}; for (var key in o) q[key] = o[key];
+    q.pose = o.pose || "sit"; q.stoop = o.stoop != null ? o.stoop : -4; q.turn = o.turn || 0;
+    q.expr = { bi: 6, bo: 3, eye: .9, curve: -.2, open: 1.25, glint: false, pupil: .35, socket: .5 };
+    q.wear = o.wear != null ? o.wear : .7; q.x = 0; q.y = 0; q.s = 1; q.flip = 1;
+    q.ch = o.ch || "townA";
+    var st = q.stoop + (q.ch.indexOf("rusty") === 0 ? q.wear * 12 : 0), dy = (R.POSE[q.pose] || R.POSE.sit).dy || 0;
+    var fig = R.person(k, q), to = o.to || [60, -620], m = rot([2, -362 + 46 * .52], st, [0, -185]);
+    m = [m[0], m[1] + dy];
+    var th = P("M" + pt(m) + " C" + f(m[0] + 10) + "," + f(m[1] - 40) + " " + f(to[0] - 20) + "," + f(to[1] + 80) + " " + pt(to), "none", "#b3141c", 2.2);
+    return "<g " + T(o) + ">" + fig + th + '<circle cx="' + pt(m).split(",")[0] + '" cy="' + m[1] + '" r="2.4" fill="#b3141c"/></g>';
+  };
+  /* The kept in mirrors (p41, p53): a pale figure inside the glass with palms pressed flat to it.
+     o = any R.person option (default ch "townA") plus fog: [x, y] for a fog handprint. */
+  R.POSE.press = { legs: [[[-18, -185], [-19, -95], [-20, -8]], [[18, -185], [19, -95], [20, -8]]], arms: [[[-46, -298], [-74, -262], [-50, -318]], [[46, -298], [74, -262], [50, -318]]] };
+  R.kept = function (k, o) {
+    o = o || {};
+    var id = k.uid("kept"), q = {}; for (var key in o) q[key] = o[key];
+    q.pose = o.pose || "press"; q.expr = o.expr || "hollow"; q.ch = o.ch || "townA"; q.x = 0; q.y = 0; q.s = 1; q.flip = 1;
+    var palm = function (x, y, c, op) { return '<g transform="translate(' + f(x) + "," + f(y) + ')" opacity="' + op + '">' + P("M-12,8 C-14,-4 -12,-12 -8,-14 L-8,-34 C-8,-38 -3,-38 -3,-34 L-3,-16 L-1,-40 C-1,-44 4,-44 4,-40 L4,-16 L7,-36 C7,-40 12,-40 12,-36 L10,-12 L16,-22 C18,-26 23,-24 21,-19 C16,-6 12,4 8,10 C2,14 -8,14 -12,8Z", c, null, 0) + "</g>"; };
+    var flt = '<defs><filter id="' + id + '"><feColorMatrix type="matrix" values=".2 .2 .2 0 .44  .2 .22 .22 0 .47  .2 .22 .24 0 .5  0 0 0 1 0"/></filter></defs>';
+    var fig = '<g filter="url(#' + id + ')" opacity="' + (o.op == null ? .85 : o.op) + '">' + R.person(k, q) + palm(-50, -312, "#f3f0ea", .9) + palm(50, -312, "#f3f0ea", .9) + "</g>";
+    if (o.fog) fig += palm(o.fog[0], o.fog[1], "#ffffff", .35);
+    return "<g " + T(o) + ">" + flt + fig + "</g>";
   };
 })(typeof window !== "undefined" ? window : globalThis);
