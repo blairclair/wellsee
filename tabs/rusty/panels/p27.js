@@ -2,13 +2,13 @@
    Owner: see ARCHITECTURE.md. Span 6, viewBox 1200x1000, mood grey, wear 1.0. */
 RUSTY.panel({
   id: "p27", w: 1200, h: 1000,
-  alt: "On an empty carnival stage after closing, among confetti, popcorn and smeared blood, Rusty, grey, stooped and wearing his filthy tie, leans on his mop beside a towering gold trophy topped with a grinning clown figurine. Its plaque reads EMPLOYEE OF THE MONTH and lists RUSTY for every month, and a paper scroll of more months unrolls past his feet and off the stage. White-gloved hands clap from off-stage.",
+  alt: "On an empty carnival stage after closing, among confetti, popcorn and smeared blood, Rusty, grey, stooped and wearing his filthy tie, leans on his mop beside a towering gold trophy topped with a grinning clown figurine. Its plaque reads EMPLOYEE OF THE MONTH and lists RUSTY for every month, and a paper scroll of more months unrolls past his feet and off the stage. Footprints from long clown shoes track through the blood into the wings, a stepladder leans against the cup for polishing it, and his own face shows small and bent in the gold. White-gloved hands clap from off-stage.",
   captions: [
     { at: "tl", text: "Every month.", w: 34 },
     { at: "br", text: "Forever.", w: 30 }
   ],
   balloons: [
-    { kind: "clown", who: "One of the Unwilling", x: 70, y: 9, w: 27, tail: [99, 34], text: "Smile, Rusty. It's <em>always</em> your month." }
+    { kind: "clown", who: "One of the Unwilling", x: 73, y: 62, w: 26, tail: [93, 54], text: "Smile, Rusty. It's <em>always</em> your month." }
   ],
   draw: function (k, R) {
     var P = R.P, INK = R.INK, s = "";
@@ -63,6 +63,11 @@ RUSTY.panel({
     s += conf;
     /* deflated balloon */
     s += P("M1080,880 C1050,860 1060,830 1090,836 C1120,842 1124,872 1096,884Z", "#7a1414", INK, 3) + P("M1094,884 C1080,920 1110,940 1086,980", "none", "#ccc", 2);
+    /* their shoe prints, long and flat, tracked through the blood and off into the wings */
+    [[930, 990, -8], [990, 925, -14], [1032, 968, -10], [1084, 902, -18], [1120, 950, -12], [1170, 884, -20]].forEach(function (q, i) {
+      s += '<g transform="rotate(' + q[2] + " " + q[0] + " " + q[1] + ')" opacity="' + (.85 - i * .1) + '"><ellipse cx="' + q[0] + '" cy="' + q[1] + '" rx="40" ry="11" fill="#7a161a"/>' +
+        '<ellipse cx="' + (q[0] - 22) + '" cy="' + q[1] + '" rx="12" ry="7" fill="#2e2925" opacity=".6"/></g>';
+    });
     /* spotlight cone */
     s += P("M470,-10 L640,-10 L1040,1000 L80,1000Z", k.url("cone"));
     s += '<ellipse cx="560" cy="955" rx="470" ry="56" fill="#fff6d8" opacity=".08"/>';
@@ -76,6 +81,7 @@ RUSTY.panel({
     s += R.woodRabbit(k, { x: 176, y: 866, s: .62, color: "#d9c08c", flip: -1 });
     /* RUSTY */
     s += R.person(k, { x: 345, y: 950, s: 1.45, pose: "lean", outfit: "eternal", wear: 1, expr: "resigned", turn: .12, stoop: -6, headTilt: 4, light: 1, glint: false });
+    s += R.glow(k, 560, 560, 300, .28);
     /* ---------- THE TROPHY ---------- */
     var G = k.url("gold"), t = "";
     /* pedestal */
@@ -83,11 +89,22 @@ RUSTY.panel({
     t += P("M572,575 H888 V935 H572Z", "#151113", INK, 4);
     t += P("M582,585 H878 V925 H582Z", "none", "#8a6a2a", 2);
     t += P("M552,548 H908 V580 H552Z", G, INK, 4);
+    /* marquee bulbs round the plaque, a couple long dead */
+    var mq = [], bi;
+    for (bi = 0; bi < 9; bi++) mq.push([587 + bi * 35.75, 590]);
+    for (bi = 1; bi < 10; bi++) mq.push([873, 590 + bi * 33.3]);
+    for (bi = 8; bi >= 0; bi--) mq.push([587 + bi * 35.75, 923]);
+    for (bi = 9; bi > 0; bi--) mq.push([587, 590 + bi * 33.3]);
+    mq.forEach(function (q, i) {
+      var dead = i === 7 || i === 22 || i === 31;
+      if (!dead) t += R.glow(k, q[0], q[1], 22, .55);
+      t += '<circle cx="' + q[0].toFixed(1) + '" cy="' + q[1].toFixed(1) + '" r="6" fill="' + (dead ? "#3a3026" : "#fff1b8") + '" stroke="' + INK + '" stroke-width="1.6"/>';
+    });
     /* plaque */
     t += P("M602,605 H858 V912 H602Z", "#d8b25a", INK, 3.5);
     t += P("M612,615 H848 V902 H612Z", "none", "#7a5418", 2);
-    t += R.sfx("EMPLOYEE", 730, 668, 54, { anchor: "middle", fill: "#3a2408", stroke: "#f6e2a0", sw: 2.5, ls: 3 });
-    t += R.sfx("OF THE MONTH", 730, 716, 40, { anchor: "middle", fill: "#3a2408", stroke: "#f6e2a0", sw: 2, ls: 2 });
+    t += R.sfx("EMPLOYEE", 730, 672, 62, { anchor: "middle", fill: "#3a2408", stroke: "#f6e2a0", sw: 2.5, ls: 2, extra: 'textLength="228" lengthAdjust="spacingAndGlyphs"' });
+    t += R.sfx("OF THE MONTH", 730, 720, 42, { anchor: "middle", fill: "#3a2408", stroke: "#f6e2a0", sw: 2, ls: 1.5, extra: 'textLength="228" lengthAdjust="spacingAndGlyphs"' });
     t += P("M630,732 H830", "none", "#7a5418", 3);
     ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY"].forEach(function (m, i) {
       var y = 760 + i * 22;
@@ -105,6 +122,9 @@ RUSTY.panel({
     /* bowl */
     t += P("M556,210 C560,336 640,430 730,442 C820,430 900,336 904,210Z", G, INK, 5);
     t += '<ellipse cx="730" cy="210" rx="174" ry="24" fill="#8a5c18" stroke="' + INK + '" stroke-width="5"/>';
+    t += '<defs><clipPath id="' + k.id("bowl") + '"><path d="M556,210 C560,336 640,430 730,442 C820,430 900,336 904,210Z"/></clipPath></defs>';
+    t += '<g clip-path="' + k.url("bowl") + '"><g filter="url(#' + k.id("goldf") + ')" opacity=".5"><g transform="translate(596,330) skewY(-12) scale(.62,.8)">' +
+      R.head(k, { x: 0, y: 0, s: 1, ch: "rusty", expr: "resigned", turn: .45, wear: 1, flip: 1 }) + '</g></g></g>';
     t += P("M612,240 C618,320 650,380 690,410", "none", "#fffbe6", 9, 'opacity=".55"');
     t += P("M700,300 l14,-30 l14,30 l32,4 l-24,20 l8,32 l-30,-16 l-30,16 l8,-32 l-24,-20Z", "#7a5418", INK, 2.5);
     t += R.sfx("No.1", 730, 400, 42, { anchor: "middle", fill: "#5a3a0c", stroke: "#f6e2a0", sw: 2 });
@@ -120,18 +140,34 @@ RUSTY.panel({
       t += P("M" + x + "," + (y - r) + " L" + (x + r * .25) + "," + (y - r * .25) + " L" + (x + r) + "," + y + " L" + (x + r * .25) + "," + (y + r * .25) + " L" + x + "," + (y + r) + " L" + (x - r * .25) + "," + (y + r * .25) + " L" + (x - r) + "," + y + " L" + (x - r * .25) + "," + (y - r * .25) + "Z", "#fffbe6", INK, 1.5);
     });
     s += t;
+    /* the stepladder he has to climb to polish it, a rag over the top rung */
+    var L0 = [[930, 972], [866, 262]], L1 = [[1004, 972], [934, 262]], rungs = "";
+    for (var ri = 1; ri < 9; ri++) {
+      var tt = ri / 9;
+      rungs += "M" + (L0[0][0] + (L0[1][0] - L0[0][0]) * tt).toFixed(1) + "," + (L0[0][1] + (L0[1][1] - L0[0][1]) * tt).toFixed(1) +
+        " L" + (L1[0][0] + (L1[1][0] - L1[0][0]) * tt).toFixed(1) + "," + (L1[0][1] + (L1[1][1] - L1[0][1]) * tt).toFixed(1) + " ";
+    }
+    s += P(rungs, "none", INK, 11) + P(rungs, "none", "#8a6a40", 5);
+    s += R.limb(L0, 9, "#9a7848", 3.5) + R.limb(L1, 9, "#7a5a34", 3.5);
+    s += P("M876,300 C900,292 930,296 944,304 L940,350 C930,344 918,352 906,346 C896,356 884,350 878,342Z", "#cfc6b0", INK, 2.5) +
+      P("M890,306 l-2,38 M914,302 l-2,44", "none", "#a89a80", 2);
     /* darkness outside the spot */
     s += '<rect width="1200" height="1000" fill="' + k.url("dark") + '"/>';
-    /* clapping gloves from off-panel right */
-    function glove(x, y, a) {
-      var g = R.limb([[x + 160, y + 90], [x + 40, y + 24], [x, y]], 22, "#7a1b25", 4), r = a * Math.PI / 180;
-      [-.45, -.15, .15, .45].forEach(function (sp) {
-        g += R.limb([[x, y], [x + Math.cos(r + sp) * 40, y + Math.sin(r + sp) * 40]], 8, "#efe9da", 3);
-      });
-      return g + '<circle cx="' + x + '" cy="' + y + '" r="17" fill="#efe9da" stroke="' + INK + '" stroke-width="4"/>';
+    /* clapping gloves from off-panel right: white four-fingered gloves in profile, palms meeting, striped sleeves */
+    function glove(x, y, a, sl) {
+      var g = '<g transform="translate(' + x + "," + y + ") rotate(" + a + ')">';
+      g += R.limb([[230, 30], [110, 10], [40, 0]], 26, sl, 4);
+      g += P("M150,0 l0,40 M190,10 l0,40", "none", "#e4d7bd", 7, 'opacity=".8"');
+      g += P("M40,-20 C56,-24 66,-14 64,0 C66,14 56,24 40,20Z", "#efe9da", INK, 4);            /* cuff */
+      g += P("M44,-18 C30,-26 6,-24 -10,-18 C-34,-14 -50,-8 -52,0 C-50,8 -34,14 -10,16 C8,20 30,22 44,16Z", "#efe9da", INK, 4);
+      g += P("M-46,-4 C-30,-6 -14,-6 2,-4 M-44,6 C-28,6 -12,6 4,6", "none", "#bcb3a0", 2.5);
+      g += P("M18,-18 C10,-32 -6,-36 -14,-30 C-18,-24 -4,-18 6,-14", "#efe9da", INK, 3.5);     /* thumb */
+      g += P("M30,-8 C24,-4 24,4 30,8", "none", INK, 2);
+      return g + "</g>";
     }
-    s += glove(1128, 452, 200) + glove(1146, 506, 160);
-    s += R.sfx("clap.", 1040, 380, 34, { fill: "#efe9da", rot: -10 }) + R.sfx("clap.", 1000, 600, 30, { fill: "#cfc8b8", rot: 8 }) + R.sfx("clap.", 1070, 680, 26, { fill: "#a9a296", rot: -4 });
+    s += glove(1126, 468, -12, "#7a1b25") + glove(1134, 488, 14, "#6a1520");
+    s += P("M1050,440 l-26,-14 M1046,478 l-30,0 M1050,516 l-26,14", "none", "#efe9da", 4, 'opacity=".8"');
+    s += R.sfx("clap.", 960, 400, 38, { fill: "#efe9da", rot: -10 }) + R.sfx("clap.", 1010, 330, 30, { fill: "#cfc8b8", rot: 6 }) + R.sfx("clap.", 1062, 272, 24, { fill: "#a9a296", rot: -4 });
     return s;
   }
 });

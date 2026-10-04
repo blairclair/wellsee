@@ -18,6 +18,11 @@ RUSTY.panel({
     s += st + P("M0,40 C150,70 450,70 600,40", "none", INK, 4);
     s += P("M120,420 C130,360 110,320 140,260 M420,420 c-6,-40 10,-60 0,-100", "none", "#3a0a0a", 8, 'opacity=".6"');
     s += R.tone(k, "M0,0 H600 V420 H0Z", .35, true);
+    /* a caged work-light on the tent pole: one hard source, front right */
+    s += R.glow(k, 560, 70, 220, .55) + P("M600,52 H548", "none", INK, 5) + '<circle cx="548" cy="70" r="14" fill="#fff3c0" stroke="' + INK + '" stroke-width="3"/>' + P("M536,60 L560,80 M536,80 L560,60 M548,56 V84", "none", INK, 2);
+    /* its shadow, huge on the canvas behind Rusty, a long arm already over him */
+    s += '<defs><filter id="' + k.id("sh") + '"><feColorMatrix type="matrix" values="0 0 0 0 .06  0 0 0 0 .01  0 0 0 0 .02  0 0 0 .78 0"/></filter></defs>';
+    s += '<g filter="url(#' + k.id("sh") + ')">' + R.player(k, { x: 330, y: 610, s: .9, variant: 2, pose: "reach", flip: -1 }) + "</g>";
     /* mud */
     s += P("M0,420 H600 V600 H0Z", "#2e2018", INK, 3);
     s += '<ellipse cx="300" cy="520" rx="140" ry="16" fill="#5a1414" opacity=".6"/><ellipse cx="80" cy="560" rx="60" ry="8" fill="#5a1414" opacity=".6"/>';
@@ -30,8 +35,9 @@ RUSTY.panel({
     var hx = 490 - 150 * .74, hy = 556 - 310 * .74;
     s += R.limb([[hx + 30, hy - 120], [hx - 30, hy + 150]], 7, "#a07a4a", 3);
     var mb = [hx - 30, hy + 150], strands = "";
-    for (var m = -5; m <= 5; m++) strands += "M" + mb[0] + "," + mb[1] + " c" + (m * 3) + ",14 " + (m * 6) + ",24 " + (m * 8) + ",34 ";
-    s += P(strands, "none", INK, 7) + P(strands, "none", "#cfc7b0", 4);
+    /* a new mop head: clamp, then cotton strands hanging straight down, a few kinked */
+    for (var m = -6; m <= 6; m++) strands += "M" + (mb[0] + m * 2.2) + "," + (mb[1] + 6) + " c" + (m * 1.5) + ",16 " + (m * 3 + (m % 2 ? 4 : -3)) + ",30 " + (m * 3.4) + "," + (52 + (m * m) % 7 * 2) + " ";
+    s += P(strands, "none", INK, 7) + P(strands, "none", "#e6dfca", 4) + P("M" + (mb[0] - 16) + "," + (mb[1] - 4) + " h32 v12 h-32Z", "#8a8a82", INK, 2.5);
     var tx = 490 - 120 * .74, ty = 556 - 300 * .74;
     s += '<g transform="rotate(-12 ' + tx + " " + (ty + 20) + ')"><ellipse cx="' + tx + '" cy="' + (ty + 26) + '" rx="34" ry="15" fill="#a3171c" stroke="' + INK + '" stroke-width="3"/>' +
       '<text x="' + tx + '" y="' + (ty + 32) + '" text-anchor="middle" font-family="Patrick Hand, sans-serif" font-weight="700" font-size="17" fill="#f6d27a">RUSTY</text></g>';
