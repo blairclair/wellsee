@@ -84,7 +84,8 @@ export function loadLevel(run, levelId) {
     status: {}, silence: false, dread: 0, dreadRaw: 0,
     flow: new Int32Array(w * h), flowTile: -1,
     outcome: null, nearestEnemy: null, exitPos: null, exits: [],
-    player: null,
+    player: null, finale: null,
+    blocked: new Set(), blockedVersion: 0, // runtime-solid tiles (e.g. the closed gate)
   };
   let start = { x: 1.5 * TILE, y: 1.5 * TILE };
   const spawns = [];
@@ -117,6 +118,7 @@ export function loadLevel(run, levelId) {
     else if (s.lg.weapon) api.spawn("pickup", s.x, s.y, { weapon: s.lg.weapon, uses: WEAPONS[s.lg.weapon].uses });
     else if (s.lg.item) api.spawn("pickup", s.x, s.y, { item: s.lg.item });
   }
+  if (def.init) def.init(api);
   computeFlow(game, true);
   return game;
 }
@@ -144,11 +146,14 @@ export function tileAt(game, tx, ty) {
   if (tx < 0 || ty < 0 || tx >= game.w || ty >= game.h) return "tent";
   return game.tiles[ty * game.w + tx];
 }
-export function solidAt(game, x, y) {
-  const t = tileAt(game, Math.floor(x / TILE), Math.floor(y / TILE));
-  return !!TILES[t].solid;
+/** Solid for movement: the tile's own `solid` flag, or blocked at runtime (api.block). */
+export function solidTile(game, tx, ty) {
+  if (tx < 0 || ty < 0 || tx >= game.w || ty >= game.h) return true;
+  const i = ty * game.w + tx;
+  return !!TILES[game.tiles[i]].solid || (game.blocked.size > 0 && game.blocked.has(i));
 }
-function walkable(game, tx, ty) { return !TILES[tileAt(game, tx, ty)].solid; }
+export function solidAt(game, x, y) { return solidTile(game, Math.floor(x / TILE), Math.floor(y / TILE)); }
+function walkable(game, tx, ty) { return !solidTile(game, tx, ty); }
 
 export function lineOfSight(game, x0, y0, x1, y1) {
   const d = Math.hypot(x1 - x0, y1 - y0), n = Math.ceil(d / (TILE / 3));
@@ -194,8 +199,8 @@ function moveCircle(game, e, dx, dy, onTouchTile) {
       const x0 = Math.floor((e.x - e.r) / TILE), x1 = Math.floor((e.x + e.r) / TILE);
       const y0 = Math.floor((e.y - e.r) / TILE), y1 = Math.floor((e.y + e.r) / TILE);
       for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
+        if (!solidTile(game, tx, ty)) continue;
         const tn = tileAt(game, tx, ty);
-        if (!TILES[tn].solid) continue;
         const nx = clamp(e.x, tx * TILE, tx * TILE + TILE), ny = clamp(e.y, ty * TILE, ty * TILE + TILE);
         let ox = e.x - nx, oy = e.y - ny; const d = Math.hypot(ox, oy);
         if (d >= e.r) continue;
@@ -213,7 +218,7 @@ function moveCircle(game, e, dx, dy, onTouchTile) {
 
 /* ================================================================ api */
 export function makeApi(game) {
-  const ev = (type, data = {}) => { game.events.push({ type, ...data }); };
+  const ev = (type, data = {}) => { game.events.push({ ...data, type }); };
   const api = {
     get player() { return game.player; },
     get entities() { return game.entities; },
@@ -253,11 +258,24 @@ export function makeApi(game) {
       e.stun = Math.max(e.stun, stun * (def.stunMul || 1));
       e.hitFlash = 0.18;
       game.run.repelled++;
-      ev("hit", { x: e.x, y: e.y, type: e.type, force });
+      ev("hit", { x: e.x, y: e.y, enemy: e.type, force });
     },
     enemiesNear(x, y, r) {
       return game.entities.filter((e) => e.cat === "enemy" && Math.hypot(e.x - x, e.y - y) < r + e.r);
     },
+    /** Make a tile solid (on=true) or clear it again at runtime; enemies re-path. */
+    block(tx, ty, on = true) {
+      const i = ty * game.w + tx, had = game.blocked.has(i);
+      if (on && !had) game.blocked.add(i); else if (!on && had) game.blocked.delete(i); else return;
+      game.blockedVersion++; game.flowTile = -1;
+    },
+    los: (x0, y0, x1, y1) => lineOfSight(game, x0, y0, x1, y1),
+    /** Steer an enemy toward (x,y) with acceleration. */
+    steer: (e, x, y, speed, accel, dt) => steer(e, x, y, speed, accel, dt),
+    /** Steer an enemy along the flow field toward the player. */
+    chase(e, speed, accel, dt) { const t = pathTarget(game, e); steer(e, t.x, t.y, speed, accel, dt); },
+    /** Player-to-enemy flow distance in tiles (walking distance), or Infinity. */
+    pathDist(e) { const v = game.flow[Math.floor(e.y / TILE) * game.w + Math.floor(e.x / TILE)]; return v >= 1e9 ? Infinity : v / 10; },
     countEnemies() { return game.entities.filter((e) => e.cat === "enemy" && e.type !== "rabbit").length; },
     remove(e) { e.dead = true; },
     /** Spawn an enemy/obstacle/projectile/pickup by type id. */
@@ -306,13 +324,13 @@ export function makeApi(game) {
       const p = game.player; aimAtNearest(game, 420, 1.3);
       const pr = api.spawn(type, p.x + Math.cos(p.face) * 14, p.y + Math.sin(p.face) * 14,
         { vx: Math.cos(p.face) * speed, vy: Math.sin(p.face) * speed, speed, owner: p });
-      ev("throw", { x: p.x, y: p.y, face: p.face, proj: type });
+      ev("throw", { x: p.x, y: p.y, face: p.face, proj: type, weapon: currentWeaponId(game) });
       return !!pr;
     },
     /** Radial burst around the player. */
     burst({ radius = 140, force = 500, stun = 2, kind = "burst" }) {
       const p = game.player;
-      ev("burst", { x: p.x, y: p.y, radius, kind });
+      ev("burst", { x: p.x, y: p.y, radius, kind, weapon: currentWeaponId(game) });
       for (const e of api.enemiesNear(p.x, p.y, radius)) api.knock(e, p.x, p.y, force, stun);
       return true;
     },
@@ -443,6 +461,8 @@ export function update(game, dt) {
   if (game.silence) api.sanity(-PLAYER.silenceDrain * dt);
   const globalAlert = game.silence || api.hasStatus("marked");
 
+  if (game.level.update) game.level.update(api, dt);
+
   /* ---- entities ---- */
   computeFlow(game, false);
   let nearest = null, nd = 1e9, aura = 0;
@@ -541,16 +561,25 @@ function updateEnemy(game, e, dt, globalAlert) {
   if (d < def.sense || globalAlert || e.relentless) e.alert = Math.max(e.alert, 2.5);
   else e.alert = Math.max(0, e.alert - dt);
   e.frozen = false;
+  e.slow = slow;
 
-  if (def.update) { def.update(e, game.api, dt); }
-  else if (e.stun > 0) {
-    e.stun -= dt;
-    const k = Math.exp(-5 * dt); e.vx *= k; e.vy *= k;
-  } else if (def.behavior === "weeper") {
+  // stun decays for every enemy, custom behaviours included
+  const stunned = e.stun > 0;
+  if (stunned) { e.stun -= dt; const k = Math.exp(-5 * dt); e.vx *= k; e.vy *= k; }
+
+  if (def.update) { def.update(e, game.api, dt, stunned); }
+  else if (stunned) { /* reeling */ }
+  else if (def.behavior === "weeper") {
     let diff = Math.atan2(e.y - p.y, e.x - p.x) - p.face; diff = Math.atan2(Math.sin(diff), Math.cos(diff));
-    const seen = Math.abs(diff) < 0.95 && d < 460 && lineOfSight(game, p.x, p.y, e.x, e.y);
-    if (seen) { e.vx = 0; e.vy = 0; e.frozen = true; }
-    else { const t = pathTarget(game, e); steer(e, t.x, t.y, def.speed * slow, def.accel, dt); }
+    const seen = Math.abs(diff) < (def.seeCone || 0.95) && d < 460 && lineOfSight(game, p.x, p.y, e.x, e.y);
+    e.chalkT = Math.max(0, (e.chalkT || 0) - dt);
+    if (seen) { e.vx = 0; e.vy = 0; e.frozen = true; e.ramp = 0; }
+    else {
+      // she gathers speed after you look away, so a glance back is never too late by a hair
+      e.ramp = Math.min(1, (e.ramp || 0) + dt / (def.rampTime || 0.001));
+      const t = pathTarget(game, e); steer(e, t.x, t.y, def.speed * slow * (0.35 + 0.65 * e.ramp), def.accel, dt);
+      if (d < 260 && e.chalkT <= 0) { e.chalkT = 0.7; game.events.push({ type: "chalk", x: e.x, y: e.y }); }
+    }
   } else if (def.behavior === "hopper") {
     e.hopT -= dt;
     const k = Math.exp(-4 * dt); e.vx *= k; e.vy *= k;

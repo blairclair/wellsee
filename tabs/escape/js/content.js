@@ -77,12 +77,17 @@ export const WEAPONS = {
   popcorn: {
     name: "Popcorn Flash-Bang", short: "Popcorn", uses: 2, cooldown: 1.2, color: "#fff2a8",
     desc: "A bag that bursts in a hot white bloom. Everything near you reels.",
-    use(api) { return api.burst({ radius: 150, force: 520, stun: 2.4, kind: "popcorn" }); },
+    use(api) { return api.burst({ radius: 140, force: 500, stun: 2.0, kind: "popcorn" }); },
   },
   mallet: {
-    name: "High-Striker Mallet", short: "Mallet", uses: 6, cooldown: 0.7, color: "#ff4d4d",
-    desc: "DING. Slow and heavy. Sends them clean across the midway.",
-    use(api) { return api.melee({ range: 62, arc: 1.7, force: 900, stun: 1.8, heavy: true }); },
+    name: "High-Striker Mallet", short: "Mallet", uses: 4, cooldown: 0.85, color: "#ff4d4d",
+    desc: "DING. Slow and heavy. Sends them clean across the midway. Only a few swings left in the handle.",
+    use(api) { return api.melee({ range: 60, arc: 1.5, force: 860, stun: 1.4, heavy: true }); },
+  },
+  popgun: {
+    name: "Shooting-Gallery Popgun", short: "Popgun", uses: 8, cooldown: 0.55, color: "#8fd16a",
+    desc: "Chained to a counter once. One cork, far and straight, and it rings their bell. Knocks a camera out of steady hands.",
+    use(api) { return api.projectile("cork", { speed: 720 }); },
   },
 };
 
@@ -97,6 +102,8 @@ export const PROJECTILES = {
            hit(p, e, api) { api.knock(e, p.x, p.y, 320, 1.4); return false; } },
   ring:  { r: 8, life: 0.55, spin: 0,
            hit(p, e, api) { api.knock(e, p.x, p.y, 280, 0.75); return true; } },
+  cork:  { r: 6, life: 0.6, spin: 0,
+           hit(p, e, api) { api.knock(e, p.x, p.y, 380, 1.8); return true; } },
   candy: { r: 10, life: 0.55, spin: 6,
            hit(p, e, api) { api.spawn("snare", p.x, p.y); return true; },
            expire(p, api) { api.spawn("snare", p.x, p.y); } },
@@ -135,7 +142,8 @@ export const ENEMIES = {
     lore: "Marched toward every light on every island. Fast in a straight line; turns like a falling tree. Two discs on a chain.",
   },
   lettie: {
-    unique: true, name: "Lettie Ames", behavior: "weeper", r: 12, speed: 210, accel: 2000,
+    // ramps up over rampTime after you look away, and scratches chalk (event) while she moves near you
+    unique: true, name: "Lettie Ames", behavior: "weeper", r: 12, speed: 178, accel: 1400, rampTime: 0.55, seeCone: 1.1,
     sense: 9999, stunMul: 0.8, mass: 0.9, damage: 18, dreadAura: 2, silent: true,
     lore: "Fingers white to the second knuckle with chalk. She only moves while you are not looking. Heads down, class.",
   },
@@ -144,12 +152,156 @@ export const ENEMIES = {
     sense: 330, stunMul: 1.3, mass: 0.6, damage: 10, dreadAura: 3,
     lore: "The little one, no shoes, skipping. He asks everyone if they have seen a yellow dog. He cannot remember her name.",
   },
+  arthur: {
+    unique: true, name: "Arthur Benning", r: 12, speed: 112, accel: 600, sense: 380,
+    stunMul: 1.2, mass: 1, damage: 12, dreadAura: 2,
+    flashRange: 340, flashCharge: 1.0, flashLock: 0.4, flashCone: 0.2, flashEvery: 5.5, markSecs: 5,
+    lore: "Pharmacist's clerk, photographer of birds. He set up his camera at the window to see what came for the ones who stayed home. It still has one exposure left, and it is for you.",
+    update(e, api, dt, stunned) { arthurUpdate(e, api, dt, stunned); },
+  },
+  barker: {
+    unique: true, boss: true, name: "The Barker", r: 20, speed: 86, accel: 420, sense: 9999,
+    stunMul: 0.45, mass: 3.2, damage: 26, dreadAura: 6,
+    lore: "Striped coat, straw boater, a cane with a brass hook. He has called the show every night for seventy years. He cannot be stopped. He can only be kept talking.",
+    update(e, api, dt, stunned) { barkerUpdate(e, api, dt, stunned); },
+  },
   rabbit: {
     name: "Morphed Rabbit", behavior: "hopper", r: 11, speed: 0, accel: 0, hop: 420,
     hopEvery: 1.0, sense: 170, stunMul: 1.2, mass: 0.6, damage: 12, dreadAura: 1,
     lore: "Too many teeth. Too many legs. Still twitches its nose.",
   },
 };
+
+/* ---------------------------------------------------------------- special behaviours
+ * Arthur Benning and the Barker replace the stock behaviours (ENEMIES[id].update).
+ * Every telegraph is also an event, so audio and UI can carry it without art.
+ */
+const wrapAngle = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+
+/* Arthur keeps a photographer's distance. When he can see you he raises the
+ * camera (flashCharge, ~1 s), tracks you until flashLock seconds before it
+ * fires, then flashes. Caught in it = `marked`: every enemy knows where you are.
+ * Counters: break line of sight, step out of the narrow cone after the aim
+ * locks, dash through it (i-frames), or knock him (any hit cancels the shot). */
+function arthurUpdate(e, api, dt, stunned) {
+  const d = e.def, p = api.player;
+  if (e.charge == null) { e.charge = 0; e.cool = 2 + Math.random() * 2; e.aim = 0; e.chargeDur = d.flashCharge; }
+  if (stunned) {
+    if (e.charge > 0) {
+      e.charge = 0; e.cool = 2.5;
+      api.emit("flashCancel", { x: e.x, y: e.y });
+      api.toast("The camera jerks aside. The flash goes off into the dark.");
+    }
+    return;
+  }
+  const dx = p.x - e.x, dy = p.y - e.y, dist = Math.hypot(dx, dy);
+  e.cool -= dt;
+  if (e.charge > 0) {
+    const k = Math.exp(-8 * dt); e.vx *= k; e.vy *= k;
+    e.charge -= dt;
+    if (e.charge > d.flashLock) e.aim = Math.atan2(dy, dx);
+    e.face = e.aim;
+    if (e.charge <= 0) {
+      e.charge = 0; e.cool = d.flashEvery * (0.85 + Math.random() * 0.3);
+      const off = Math.abs(wrapAngle(Math.atan2(dy, dx) - e.aim));
+      const hit = dist < d.flashRange && off < d.flashCone + Math.atan2(p.r, Math.max(dist, 1)) &&
+        p.invuln <= 0 && api.los(e.x, e.y, p.x, p.y);
+      api.emit("flash", { x: e.x, y: e.y, face: e.aim, range: d.flashRange, hit });
+      if (hit) {
+        api.status("marked", d.markSecs); api.sanity(-10);
+        api.emit("marked", { x: p.x, y: p.y, secs: d.markSecs });
+        api.toast("Click. Arthur Benning has your picture. Every painted face knows where you are.");
+      }
+    }
+    return;
+  }
+  if (e.alert > 0) {
+    const sees = dist < d.flashRange && api.los(e.x, e.y, p.x, p.y);
+    if (e.cool <= 0 && sees) {
+      e.charge = e.chargeDur = d.flashCharge; e.aim = Math.atan2(dy, dx);
+      api.emit("flashCharge", { x: e.x, y: e.y, face: e.aim, dur: d.flashCharge });
+      return;
+    }
+    if (!sees || dist > 250) api.chase(e, d.speed * e.slow, d.accel, dt);
+    else if (dist < 150) api.steer(e, e.x - dx, e.y - dy, d.speed * 0.8 * e.slow, d.accel, dt);
+    else { const k = Math.exp(-4 * dt); e.vx *= k; e.vy *= k; e.face = Math.atan2(dy, dx); }
+  } else {
+    if (!e.wander || Math.hypot(e.wander.x - e.x, e.wander.y - e.y) < 8 || Math.random() < dt * 0.25) {
+      const a = Math.random() * 6.283, r = Math.random() * 96;
+      const wx = e.hx + Math.cos(a) * r, wy = e.hy + Math.sin(a) * r;
+      e.wander = api.solidAt(wx, wy) ? { x: e.hx, y: e.hy } : { x: wx, y: wy };
+    }
+    api.steer(e, e.wander.x, e.wander.y, d.speed * 0.3, d.accel, dt);
+  }
+}
+
+const BARKER_CALLS = [
+  "“STEP RIGHT UP! Nobody leaves before the finale!”",
+  "“Don’t go, friend. Everybody you ever knew is in the audience.”",
+  "“One does not refuse the show! Bring the lights up!”",
+  "“LAST CALL! Last call for the one at the gate!”",
+];
+
+/* The Barker: slower than you, unkillable, barely stunnable (stunMul 0.45, mass 3.2).
+ * Close in, he winds up a lunge (barkerWindup, ~0.85 s, aim locks for the last
+ * 0.25 s) then charges (barkerLunge): sidestep or dash. Every so often, and right
+ * after each breaker, he calls a wave out of the tent flaps (barkerCall). Each
+ * breaker thrown raises his phase: faster, shorter windups, bigger waves. */
+function barkerUpdate(e, api, dt, stunned) {
+  const d = e.def, p = api.player, f = api.game.finale;
+  if (e.windup == null) { e.windup = 0; e.lunging = 0; e.phase = e.phase || 0; e.calling = 0; e.callT = 3.5; e.lungeCd = 2; e.aim = 0; }
+  if (f && !f.barker) f.barker = e;
+  if (stunned) { e.windup = 0; e.lunging = 0; return; }
+  const dx = p.x - e.x, dy = p.y - e.y, dist = Math.hypot(dx, dy), ph = e.phase || 0;
+  e.callT -= dt; e.lungeCd -= dt;
+  if (e.lunging > 0) {
+    e.lunging -= dt;
+    if (e.lunging <= 0) { e.lunging = 0; e.vx *= 0.3; e.vy *= 0.3; }
+    return;
+  }
+  if (e.windup > 0) {
+    e.windup -= dt; const k = Math.exp(-10 * dt); e.vx *= k; e.vy *= k;
+    if (e.windup > 0.25) e.aim = Math.atan2(dy, dx);
+    e.face = e.aim;
+    if (e.windup <= 0) {
+      e.windup = 0; const sp = 400 + 30 * ph;
+      e.lunging = 0.42; e.vx = Math.cos(e.aim) * sp; e.vy = Math.sin(e.aim) * sp;
+      api.emit("barkerLunge", { x: e.x, y: e.y, face: e.aim });
+    }
+    return;
+  }
+  if (e.calling > 0) { e.calling -= dt; const k = Math.exp(-8 * dt); e.vx *= k; e.vy *= k; return; }
+  if (e.callT <= 0) {
+    e.callT = Math.max(8, 15 - 2.5 * ph); e.calling = 1.1;
+    api.emit("barkerCall", { x: e.x, y: e.y });
+    api.toast(BARKER_CALLS[Math.min(ph, BARKER_CALLS.length - 1)]);
+    barkerWave(api, 1 + ph);
+    return;
+  }
+  if (e.lungeCd <= 0 && dist < 190 && api.los(e.x, e.y, p.x, p.y)) {
+    const dur = Math.max(0.55, 0.85 - 0.08 * ph);
+    e.windup = dur; e.aim = Math.atan2(dy, dx); e.lungeCd = Math.max(1.6, 3.2 - 0.4 * ph) + dur;
+    api.emit("barkerWindup", { x: e.x, y: e.y, face: e.aim, dur });
+    return;
+  }
+  api.chase(e, d.speed * (1 + 0.1 * ph) * e.slow, d.accel, dt);
+}
+
+/* A wave out of the tent flaps farthest from you (it comes at you, never on top of you). */
+function barkerWave(api, n) {
+  const p = api.player;
+  const flaps = api.entities.filter((o) => o.type === "spawner")
+    .sort((a, b) => Math.hypot(b.x - p.x, b.y - p.y) - Math.hypot(a.x - p.x, a.y - p.y));
+  const types = ["unwilling", "unwilling", "eli", "sam", "tobias"];
+  for (let i = 0; i < Math.min(n, flaps.length); i++) {
+    if (api.countEnemies() >= 9) break;
+    let type = types[(Math.random() * types.length) | 0];
+    if (ENEMIES[type].unique && api.entities.some((o) => o.type === type)) type = "unwilling";
+    const fl = flaps[i], en = api.spawn(type, fl.x, fl.y);
+    en.alert = 4; en.relentless = true; fl.open = 1.2;
+    api.emit("spawn", { x: fl.x, y: fl.y, enemy: type });
+  }
+}
 
 /* ---------------------------------------------------------------- obstacles
  * Static or moving hazards. Fields: r (collision radius), solid (blocks the
@@ -220,12 +372,68 @@ export const OBSTACLES = {
       }
     },
   },
+  jack: {
+    name: "Jack-in-the-Box", r: 13, light: { r: 46, color: "#ffb347", flicker: 0.35 },
+    lore: "Turn the crank and it plays the song. Nobody is turning the crank. It springs for anyone close: you, or whatever is chasing you.",
+    init(e) { e.crank = 0; e.sprung = 0; e.cool = 0; },
+    update(e, api, dt) {
+      e.cool = Math.max(0, e.cool - dt);
+      if (e.sprung > 0) { e.sprung += dt; if (e.sprung > 3.2) e.sprung = 0; }
+      if (e.crank > 0) {
+        e.crank -= dt;
+        if (e.crank <= 0) {
+          e.crank = 0; e.sprung = 0.001; e.cool = 4.5;
+          const R = 78, p = api.player;
+          api.emit("jackSpring", { x: e.x, y: e.y, radius: R });
+          for (const en of api.enemiesNear(e.x, e.y, R)) api.knock(en, e.x, e.y, 520, 2.4);
+          if (Math.hypot(p.x - e.x, p.y - e.y) < R + p.r && api.hurt(14, e.x, e.y, "jack")) {
+            api.shove(e.x, e.y, 520); api.sanity(-6);
+          }
+        }
+        return;
+      }
+      if (e.cool > 0 || e.sprung > 0) return;
+      const p = api.player;
+      const near = Math.hypot(p.x - e.x, p.y - e.y) < 64 || api.enemiesNear(e.x, e.y, 52).some((en) => en.stun <= 0);
+      if (near) { e.crank = 0.75; api.emit("jackCrank", { x: e.x, y: e.y, dur: 0.75 }); }
+    },
+  },
+  breaker: {
+    // finale: stand on it to throw it. Progress pauses (never resets) if you step off or get hit.
+    name: "Gate Breaker", r: 16, light: { r: 70, color: "#ff3b3b", flicker: 0.15 }, work: 2.4,
+    lore: "A knife switch in an iron box, the wires running to the gate. It is stiff. It takes both hands.",
+    init(e, api) { e.progress = 0; e.done = false; e.index = api.entities.filter((o) => o.type === "breaker").length - 1; },
+    touch(e, api, dt) {
+      const f = api.game.finale;
+      if (e.done || !f || api.player.invuln > 0.3) return;
+      e.progress = Math.min(1, e.progress + dt / e.def.work);
+      f.working = e.progress;
+      if (e.progress < 1) return;
+      e.done = true; f.thrown++; f.working = null;
+      api.emit("breaker", { x: e.x, y: e.y, index: e.index, thrown: f.thrown, total: f.total });
+      if (f.barker) { f.barker.phase = f.thrown; f.barker.callT = Math.min(f.barker.callT || 0, 1.2); }
+      if (f.thrown < f.total) {
+        api.toast(`CLUNK. A breaker throws. ${f.total - f.thrown} to go. The Barker raises his voice.`);
+        return;
+      }
+      f.open = true;
+      for (const g of api.entities) if (g.type === "gate") api.block(g.tx, g.ty, false);
+      api.emit("gateOpen", { x: api.game.exitPos.x, y: api.game.exitPos.y });
+      api.toast("The chains drop. The gate groans open. RUN.");
+    },
+  },
+  gate: {
+    name: "The Front Gate", r: 0,
+    lore: "Iron, painted red and gold, taller than the tents. Chained. The breakers are wired to the chains.",
+    init(e) { e.open = 0; },
+    update(e, api, dt) { const f = api.game.finale; if (f && f.open) e.open = Math.min(1, e.open + dt * 1.4); },
+  },
   snare: {
-    name: "Cotton-Candy Snare", r: 46, life: 6,
+    name: "Cotton-Candy Snare", r: 40, life: 4.5,
     update(e, api, dt) {
       e.age = (e.age || 0) + dt;
       for (const en of api.enemiesNear(e.x, e.y, e.r)) { en.stun = Math.max(en.stun, 0.25); en.snared = 0.25; }
-      if (e.age > 6) api.remove(e);
+      if (e.age > 4.5) api.remove(e);
     },
   },
   spawner: {
@@ -236,12 +444,14 @@ export const OBSTACLES = {
       e.timer -= dt; e.open = Math.max(0, (e.open || 0) - dt);
       if (e.timer > 0) return;
       e.timer = pr.every * (0.8 + Math.random() * 0.4);
-      if (api.countEnemies() >= pr.max) return;
+      // only the hunters the tents sent count toward the cap: dormant figures posed
+      // around the map must not switch the clock off
+      if (api.entities.filter((o) => o.relentless).length >= pr.max || api.countEnemies() >= 12) return;
       let type = pr.types[(Math.random() * pr.types.length) | 0];
       if (ENEMIES[type].unique && api.entities.some((o) => o.type === type)) type = "unwilling";
       // The Unwilling sent out by the tents never stop hunting you.
       const en = api.spawn(type, e.x, e.y); en.alert = 4; en.relentless = true; e.open = 1.2;
-      api.emit("spawn", { x: e.x, y: e.y, type });
+      api.emit("spawn", { x: e.x, y: e.y, enemy: type });
       api.toast("A tent flap opens. Someone steps out.");
     },
   },
@@ -271,7 +481,8 @@ export const LEGEND = {
   "S": { start: true },
   "V": { tile: "door", obstacle: "spawner" },
   "C": { enemy: "unwilling" }, "F": { enemy: "tobias" }, "L": { enemy: "sam" }, "M": { enemy: "lettie" }, "E": { enemy: "eli" },
-  "r": { enemy: "rabbit" },
+  "r": { enemy: "rabbit" }, "A": { enemy: "arthur" }, "R": { enemy: "barker" },
+  "j": { obstacle: "jack" }, "Y": { obstacle: "breaker" }, "G": { weapon: "popgun" },
   "u": { obstacle: "teacup" }, "h": { obstacle: "horse" }, "k": { obstacle: "cookie" },
   "D": { obstacle: "dunk", tile: "water" }, "*": { obstacle: "searchlight" },
   "f": { weapon: "fork" }, "H": { weapon: "hat" }, "c": { weapon: "candy" }, "o": { weapon: "rings" },
@@ -287,6 +498,8 @@ export const LEGEND = {
  * computed from the map automatically.
  * palette: hints for art (floor tint, fog colour).
  */
+/* LEVELS may also have init(api) (once, after spawns) and update(api, dt) (every
+ * frame before entities): the finale uses them to set up game.finale and the gate. */
 export const LEVELS = {
   midway: {
     name: "The Midway", tag: "where the bulbs still burn",
@@ -295,24 +508,30 @@ export const LEVELS = {
     pressure: { every: 26, max: 4, types: ["unwilling", "unwilling", "eli"] },
     palette: { fog: "#3a0f2a", tint: "#ff4d6d" },
     map: [
-      "############################################",
-      '#T""""""""""T"""""""""""""""""T"""""""""""T#',
-      '#""H""=====""""""r""""""======"""""""a"""""#',
-      '#""""""""""""""""""""""=====""""""""""""""X#',
-      '#"""=====""""""""""""""""""""""""""""=====X#',
-      '#BBBBB""BBBBBBBBBB""BBBBBBBBBBBBBB""BBBBB""#',
-      "#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
-      "#,,l,,,,,,,,,l,,,,,,,,,,,,l,,,,,,,,,,,l,,,,#",
-      "#S,,f,,,,,,,,,,,,,,k,,,,,,,,,,,u,,,,,,,,,,X#",
-      "#,,,,,,,,,,,,,,,,,,,,,,,,C,,,,,,,,,,,,,,,,X#",
-      "#,,l,,,,,,,,,l,,,,,,,,,,,,l,,,,,,,,,,,l,,,,#",
-      "#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
-      "#BBBBBBB..BBBBBBBBBBBVBBBBBBBBBBB..BBBBBBBB#",
-      "#..........................................#",
-      "#..====...........======.........=====...b.#",
-      "#..o.....................*.................#",
-      "#..................E.......................#",
-      "############################################",
+      "####################################################################################",
+      '#T""""""""""T""""""""""""""T""""""""""""""""""""""b"""""""""T"""""""""""""""""="""X#',
+      '#"""""H"""""""""""""""""""r"""""""""""==============="""""""""""""""""="""""""="""X#',
+      '#"""================="""""""""""""""""""""""""""""""""""""r"""""""""""="""""""="""X#',
+      '#"""""""""""""""""""""""""""""""""""""""""""""""""""""==============="="""""""=""""#',
+      '#"""""""""""""""""""""============="""""""""""""""""""""""""""""""a"""=""""""""""""#',
+      '#"""""""""""""""""""""""""""""""""""""""""""""T"""""""""""""""""""""""=""""""T"""""#',
+      "#BBBBBBBB,,BBBBBBBBBBBBBBBBBBB,,BBBBBBBBBBBBBBBBBBBBBBBB,,BBBBVBBBBBBBBBBB,,BBBBBBB#",
+      "#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#######,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,BBBBBBB#",
+      "#,,l,,,,,,,,,,,l,,,,,,,,,,,l,,,,,,,,#######,,,,l,,,,,,,,,,,l,,,,,,,,,,,l,,,,BBBBBBB#",
+      "#,,,,f,,,,,,,,,,,,,,,,,,,,,,,,u,,,,,#######,,,,,,,,,,,,,,,,,C,,,,,,,,,,,,,,,BBBBBBB#",
+      "#,S,,,,,,,,,,,,,,,,,,,,,C,,,,,,,,,,,,,,j,,,,,,,,,,,,*,,,,,,,,,,,,,,,,,,,,,,,BBBBBBB#",
+      "#,,,,,,,,,,,,,,,,,,,,,k,,,,,,,,,,,,,#######,,,,,,,,,,,,,,,,,,,,,u,,,,,,,,,,,BBBBBBB#",
+      "#,,l,,,,,,,,,,,l,,,,,,,,,,,l,,,,,,,,#######,,,,l,,,,,,,,,,,l,,,,,,,,,,,l,,,,BBBBBBB#",
+      "#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#######,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,BBBBBBB#",
+      "#BBBBBBBBBBBBBBB,,BBBBBBBVBBBBBBBBBBBBBBBBBB,,BBBBBBBBBBBBBBBBBBBB,,BBBBBBBBBBBBBBB#",
+      "#.....................................................................=............#",
+      "#.....................................................................=............#",
+      "#...===========.................E...............=============.........=............#",
+      "#.................................................................j...=............#",
+      "#.......o...........===============...................................=............#",
+      "#.......................................r...........G...........................a..#",
+      "#..................................................................................#",
+      "####################################################################################",
     ],
   },
   mirrors: {
@@ -322,19 +541,31 @@ export const LEVELS = {
     pressure: { every: 30, max: 4, types: ["lettie", "unwilling"] },
     palette: { fog: "#10233a", tint: "#7af0ff" },
     map: [
-      "#######################################",
-      "#S:::::m::::::::m::::::::::m::::::::X:#",
-      "#::f:::m::mmmm::m::mmmmmm::m::mmmm::X:#",
-      "#::::::m::m:::::::::m::::::m:::::m::::#",
-      "#mmm:::m::m::mmmmmmmm::M:::m::m::m::::#",
-      "#::::::::::::::l:::::::::::::::m:::mmm#",
-      "#::mmmmmmmmm::::::mmmmmmmmm::mmm::::::#",
-      "#::::::::::m::::::m::::::::::::::::a::#",
-      "#mmmmm:::::m::k:::m:::mmmmmm:::mmmmm::#",
-      "#::::m::C::m::::::m:::m::::m:::::::m::#",
-      "#::H:m:::::mmmmV:mm:::m::l:m:::C:::m::#",
-      "#:::::::::::::::::::::::::::::::::::::#",
-      "#######################################",
+      "##############################################################",
+      "#:::::::::l:::::::::::l:::::::::::::::l:::::a:::::l:::::::V::#",
+      "#:::::::::::::::H:::::::::::::::::C:::::::::::::::::::::::::p#",
+      "#::###########################:############################::#",
+      "#:f#mmmmmmmmmmmmmmmmmmmmmmmmmm:mmmmmmmmmmmmmmmmmmmmmmmmmmm#::#",
+      "#::#m:::::m:::::::::::::::::::::::::::::::::::m::::::::mmm#::#",
+      "#::#m:::::m:::::::::::::::::::::::::::::::::::m::::::::mmm#::#",
+      "#::#mmmm::mmmmmmmmmm::m::mmmm:lmmmmmmmmmmmmm::m::m::m::mmm#::#",
+      "#::#m::m:::::m:::::::::::m:::::m::::::::::::::m::m:::::mmm#::#",
+      "#::#m::m:::::m:::::::::::m:::::m::::::::::::::m::m:::::mmm#::#",
+      "#::#m::mmmm::m::mmmmmmmmmm::mmmm::mmmm::mmmm::m::mmmmmmmmm#::#",
+      "#::#m:::::m:::::m:::::m:::::::::M:m::m::::::::m::::::::mmm#:X#",
+      "#S::::::::m:::::m:::::m::::::k::::m::m::::::::m:::::::::::::X#",
+      "#::#m::mmmmmmmmmm:ammmm::mmmm::mmmm::mmmmmmmmmm::mmmm::mmm#:X#",
+      "#::#m::::::::::::::m:::::m::::::::::::::m::::::::::::::mmm#::#",
+      "#::#m::::::::::::::m:::::m::::::::::::::m::::::::::::::mmm#::#",
+      "#::#m::mmmmmmm::mmmm::m::m::m:lmmmmmmm::mmmmmmm::mmmm::mmm#::#",
+      "#::#m::::::::m:::::::::::::::::m:::::::::::::::::m:::::mmm#::#",
+      "#::#m::::::::m:::::::::::::::::m:::::::::::::::::m:::::mmm#::#",
+      "#::#mmmmmmmmmmmmmmmmmmmmmmmmmm:mmmmmmmmmmmmmmmmmmmmmmmmmmm#::#",
+      "#::#mmmmmmmmmmmmmmmmmmmmmmmmmm:mmmmmmmmmmmmmmmmmmmmmmmmmmm#::#",
+      "#::###########################:############################::#",
+      "#:::::::::::::::::::o:::::::C::::::::::::::::::::::::::::::::#",
+      "#:::::::::l:::::::::::::l:::::::::::::::l:::::b:::::l::::::::#",
+      "##############################################################",
     ],
   },
   pen: {
@@ -344,21 +575,32 @@ export const LEVELS = {
     pressure: { every: 20, max: 5, types: ["unwilling", "eli", "tobias"] },
     palette: { fog: "#1c2a10", tint: "#9dff6a" },
     map: [
-      "#################################################",
-      '#S""""""=""""""""""""""""""=""""""""""""""""""""#',
-      '#""""""""=""r"""""c"""""""""=""""""r""""""a"""""#',
-      '#""""""""=""""""""""""""""""="""""""""""""""""""#',
-      '#""f"""""======""=======""""======"""""=======""#',
-      '#"""""""""""""""""""""""""""""""""""""""""""""""#',
-      '#""l"""""""""""""""l""""""""""""""""l"""""""""""#',
-      '#====""=====""""""""""=========""""""""=====""==#',
-      '#"""""""""""=""r""""o""=""""""""""="""""""""""""#',
-      '#"""a""""""""=""""""""""=""""r""""""=""""""p""""#',
-      '#""""""""r"""=""""""""""=""""""""""=""""""""""""#',
-      '#"""""""""""""=====V=====""""""""""=""""""""""""#',
-      '#""""""""""""""""""""""""""""""F""""""""""""""""#',
-      '#"""b"""""""""""""""""""""""""""""""""""""""""XX#',
-      "#################################################",
+      "################################################################################",
+      '#"""""""""l"""""""""""""""l"""""""""""""""""l"""""""""""""""l"""""""""""""l""""#',
+      '#"S""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""#',
+      '#""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""#',
+      '#"""""============="""""============="""""======"======"""""=============""""""#',
+      '#"""""="""""""""""="""""="""""""""""="""""="""""""""""="""""="""""""""""=""""""#',
+      '#"""""=""c""""""""="""""="""""""""""="""""=""""""""p""="""""="""""""""a"=""""""#',
+      '#"""""="""""r"""""="""""""""""r"""""="""""="""""r"""""="""""="""""r"""""=""""""#',
+      '#"""""="""""""""""="""""="""""""""""="""""="""""""""""="""""="""""""""""=""""""#',
+      '#"""""="""""""""""="""""=""""""""o""="""""="""""""""""="""""="""""""""""=""""""#',
+      '#"""""======"======"""""============="""""============="""""======"======""""""#',
+      '#"""""""""""""""""""""""""""~~~~~~~~~~~~~~~~~~~~~~~""""""""""""""""""""""""""""#',
+      "#~~~~~~~~~~~~~~~~~~~~~~~~~D~~~~~~~~~~~~~r~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#",
+      "#~~~f~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~V~#",
+      '#"""""""""""""""""""""""""""~~~~~~~~~~~~~~~~~~~~~~~""""""""""""""""""""""""""""#',
+      '#"""""""""""======"======"""""============="""""""======"======""""""""""""""""#',
+      '#"""""""""""="""""""""""="""""="""""""""""="""""""="""""""""""="""""""E""""""""#',
+      '#"""""""""""="""""""""""="""""=""""""""g""="""""""="""""""""""=""""""""""""""""#',
+      '#"""""""""""="""""r"""""="""""="""""r"""""""""""""="""""r"""""=""""""""""""j"""#',
+      '#"""""""""""=""""""""b""="""""="""""""""""="""""""="""""""""""=""""""""""""""""#',
+      '#"""""""""""="""""""""""="""""="""""""""""="""""""="""""""""a"=""""""""""""""""#',
+      '#"""""""""""============="""""============="""""""=============""""""""""""""""#',
+      '#"""=======""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""#',
+      '#"""""""""""""""""""""""""""""""""""""""""""""F"""""""""""""""""""========="""X#',
+      '#"""""""""""""""""""""""""""""V"""""""""""""""""""""""""""""""""""""""""""""""X#',
+      "################################################################################",
     ],
   },
   carousel: {
@@ -368,20 +610,32 @@ export const LEVELS = {
     pressure: { every: 22, max: 5, types: ["unwilling", "tobias", "sam"] },
     palette: { fog: "#2a1236", tint: "#ffb347" },
     map: [
-      "##############################################",
-      "#S,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
-      "#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
-      "#,,,,,,,,h,,,,,,,,,,,,,,,,,u,,,,,,,,,,,,,,,,,#",
-      "#,,,,,,,,,,,,,,,,,,l,,,,,,,,,,,,,,,,,,h,,,,,,#",
-      "#BBBB,,,,,,,,,BBBBBBBBB,,,,,,,,BBBBB,,,,,,,,,#",
-      "#,,g,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
-      "#,,,,,,,~~~~~~,,,,,,,,,,,,,,,,,,,,k,,,,,,,,,,#",
-      "#,,,,,,,~~D~~~,,,,,,,u,,,,,,C,,,,,,,,,,,,,a,,#",
-      "#,,,,,,,~~~~~~,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
-      "#BBBBBBBBBBBB,,,,,,,BBBBBBVBBBBBB,,,,,,BBBBBB#",
-      "#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
-      "#,,c,,,,,,h,,,,,,,,,,,,,,,,,l,,,,,,,,,,,,,,XX#",
-      "##############################################",
+      "##############################################################################",
+      "#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,l,,,,,,,,V,,,,,,,,,,l,,,,,,,,,,,,,,,,,,,,,,,,,,#",
+      "#,,,,,,,,,,,,,,,,,,,u,,,,,,,,,,,,,,,,,,,u,,,,,,,,,,,,,,,,,,,u,,,,,k,,,,,,,b,,#",
+      "#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
+      "#BBBBBBB,,BBBBBBBBBBBBBBBBB,,,,,,,,,,,,,,,,,,,,,,,,,BBBBBBBBBBBBBBBBBB,,BBBBB#",
+      "#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,===,===,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
+      "#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,===,,,,,,,===,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
+      "#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,==,,,,,,,,,,,==,,,,,,,,,,,,,C,,,,,,,,,,,,,,,,#",
+      "#,,,,,,,,,,,h,,,,,,,,,,,,,,,,,,=,,,,,,,,,,,,h,,=,,,,,,,,,,,,,,,,,,B,,,,,,,,,,#",
+      "#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,=,,h,,,,,,,,,,,,,,=,,,,,,,,,,,,,,,,,B,,,,,,,,,,#",
+      "#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,=,,,,,,,,,,,,,,,,,=,,,,,,,,,,,,,,,,,B,,,,,,,,,,#",
+      "#,,,,,,,,,,,,,,,,,,,,,,,,,,,,==,,,,,,,BBB,,,,,,,==,,,,,,,,,,,,,,,,B,,,,,,,,,X#",
+      "#,S,,,,,,,,,,,,,,,,,,,,,C,,,,,,,,,,l,,BBB,,l,,,,,,,,j,,,,,,,,,,,,,,,,,,,,,,,X#",
+      "#,,,,,,,,,,,,,,,,,,,,,,,,,,,,==,,,,,,,BBB,,,,,,,==,,,,,,,,,,,,,,,,B,,,,,,,,,X#",
+      "#,,,,f,,,,,,,,,,,,,,,,,,,,,,,,=,,,,,,,,g,,,,,,,,=,,,,,,,,,,,,,,,,,B,,,,,,,,,,#",
+      "#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,=,,,,,,,,,,,,,,h,,=,,,,,,,,,,,,,,,,,B,,,,,,,,,,#",
+      "#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,=,,h,,,,,,,,,,,,=,,,,,,,,,,,,u,,,,,B,,,,,,,,,,#",
+      "#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,==,,,,,,,,,,,==,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
+      "#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,===,,,,,,,===,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
+      "#,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,===,===,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,#",
+      "#BBBBBBB,,BBBBBBBBBBBBBBBBB,,,,,,,,,,,,,,,,,,,,,,,,,BBBBBBBBBBBBBBBBBB,,BBBBB#",
+      "#,,,,,,,,,,,,,~~~~~~~~~~~~~~~~~,,,,,,,,,,,,,,,,,~~~~~~~~~~~~~,,,,,,,,,,,,,,,,#",
+      "#,,,,,,,,,,,,,~~~~~~~~D~~~~~~~~,,,,,,,,,,,,,,,,,~~~~~~~~~~~~~,,,a,,,,,,,,,,,,#",
+      "#,,,,,,,c,,,,,~~~~~~~~~~~~~~~~~,,,,,a,,,,,,,,,,,~~~~~~D~~~~~~,,,,,,,,,,,,,,,,#",
+      "#,,,,,,,,,,,,,~~~~~~~~~~~~~~~~~,,,,,,,,V,,,,H,,,~~~~~~~~~~~~~,,,,,,,,,,,,,,,,#",
+      "##############################################################################",
     ],
   },
   silent: {
@@ -391,40 +645,151 @@ export const LEVELS = {
     pressure: { every: 18, max: 4, types: ["sam", "unwilling", "eli"] },
     palette: { fog: "#1a1a22", tint: "#c8c8ff" },
     map: [
-      "########################################",
-      '#S"""""""""""""""""T"""""""""""""""""""#',
-      '#""p"""""sssssss"""""""""ssssss"""""""X#',
-      '#"""""""ssssssssss""""""sssssssss"""""X#',
-      '#"""T"""sssssssssss"""""ssssLsss"""""""#',
-      '#"""""""ssssssssss""""*""ssssssss""""""#',
-      '#""""""""ssssssss""""""""""ssssss"""T""#',
-      '#""""b"""""""""""""""""""""""""""""""""#',
-      '#"""""""""""""T"""""V""""""""""o"""""""#',
-      '#""""""""""""""""""""""""""""""""""""""#',
-      "########################################",
+      "################################################################################",
+      '#"""""""""""""""""""""""""""""""""""""""""""""""""r""""""""""""""""""""""""""""#',
+      '#"S"""""""""""""""""""""o"""""""""""""""""""""""""""""""""""""""""""*""""""""""#',
+      '#""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""#',
+      '#"""""T""T""T""T""T""TssTssTssTssTssT""T""T""T""T""TssTssTssTssTssT""T""T""""""#',
+      '#""""""""""""""""""""""sssssssssssssss""""""""""""""sssssssssssssss""""""""""""#',
+      '#"""""T"""""""""""""""""sssssssssssssss"""""""""""""sssssssssssssss""""""T"""""#',
+      '#""""""""""""""""""""""""sssssssssssssss""""""""""""sssssssssssssss""""""""""""#',
+      '#"""p"""""""""""""""""""""sssssssssssssss"""""C"""""ssssssEssssssss""""""""""""#',
+      '#"""""T""""""""""""""""""""sssssssssssssss""""""""""sssssssssssssss""""""T"""""#',
+      '#"""""""""""""""""""""""""""sssssssssssssss"""""""""sssssssssssssss"""""""""r""#',
+      '#""""""""""""""""""""""""""""sssssssssssssss""""""""sssssssssssssss""""""""""""#',
+      '#"""""T"""""""""""""C"""""""""ssssLssssskssss"""""""sssssssssssssss""""""T"""""#',
+      '#""""""""""""""""""""""""""""""sssssssssssssss"""""""""""""""""""""""""""""""""#',
+      '#""r""""""""""""""""""""""""""""sssssssssssssss"""""""""""""""""""V""""""""""""#',
+      '#"""""T""""""""""""""""""""""""""sssssssssssssss"""""""""""""""""""""""""T"""""#',
+      '#"""""""""""""""""""""""""""""""""sssssssssssssss"""""""""""C""""""""""""""""""#',
+      '#""""""""""""""""""""""""""""""""""sssssCsssssssss"""""""""""""""""""""""""""""#',
+      '#"""""T"""""""""""""""""""""""""""""sssssssssssssss""""""""""""""""""""""T"""""#',
+      '#""""""""""""""""""""""""""""""""""""sssssssssssssss"""""""""""""""""""""""""""#',
+      '#"""""""""""""""""""""""""""""""""""""sssssssssssssss"""""""""""""""""""""""a""#',
+      '#"""""T""T""T""T""T""T""T""T""T""T""T""TssTssTssTssTssT""T""T""T""T""T""T""""""#',
+      '#"""""""""""*"""""""""""""""""C""""""""""""""""""""""""""""""""""""""""""""""""#',
+      '#"b"""""""""""""""""""""""""""""""""""""r"""""""""""""""""""""""""""""G"""""""X#',
+      '#"""""""""""""""""""""""""""""""""""""""""""V"""""""""""""""""""""""""""""""""X#',
+      "################################################################################",
     ],
   },
   bigtop: {
     name: "The Big Top", tag: "the gate is through the ring",
-    blurb: "The only way out is through the ring. The audience is all the Unwilling now, and the show has been waiting for you. Beyond the far flap: the gate.",
-    base: "sawdust", ambient: 0.88, length: 3, threat: 5, final: true,
+    blurb: "Across the ring is quickest: sawdust gone silent under a searchlight. Round the bleachers is long and the audience is restless. Under the bleachers is tight, dark, and someone left supplies. Beyond the far flap: the gate.",
+    base: "sawdust", ambient: 0.88, length: 4, threat: 4,
     pressure: { every: 15, max: 7, types: ["unwilling", "sam", "lettie", "tobias", "eli"] },
     palette: { fog: "#3a0808", tint: "#ff2a2a" },
     map: [
-      "##############################################",
-      "#S::::::#::::::::::::::::::::::::::#:::::::XX#",
-      "#:::f:::#:::::::::::V::::::::::::::#:::::::::#",
-      "#:::::::#::::l:::::::::::::::l:::::#::::k::::#",
-      "#:::::::::::::::::::::u::::::::::::::::::::::#",
-      "#::a::::#:::::::sssssssssss::::::::#:::::::::#",
-      "#:::::::#::::F::sssssssssss::::L:::#:::::::::#",
-      "#########:::::::sssss*sssss::::::::####:::####",
-      "#:::::::::::::::sssssssssss::::::::::::::::::#",
-      "#::o::::#:::::::sssssssssss:::::::::#:::::H::#",
-      "#:::::::#::::l:::::::::::::::l:::::#:::::::::#",
-      "#::b::::#::::::::::::::::::::M:::::#::p::::::#",
-      "#:::::::#::::::::::::V:::::::::::::#:::::::::#",
-      "##############################################",
+      "################################################################################",
+      "#:::::::::::::::::::l:::::::::::::::::::V:::::::::::::::::::l::::::::::::::::::#",
+      "#:b::::::::::::::::::::::::::::::::::::::B:::::::::::::::::::::::::::::::::::XX#",
+      "#::::::::::::::::::::::::::::::BBB:::::::::::::BBB::::::::::::::::A:::::::::::X#",
+      "#:::::::F:::::::::::::::::::BB::::::::::j::::::::::BB::::::::::::::::::::::::::#",
+      "#::::::::::::::::::::::::BB:::::::BBBBBBBBBBBBB:::::::BB:::::::::::::::::::::::#",
+      "#::::::::::::::::::::::BB:::::BBB:::::::::::::::BBB:::::BB:::::::::::::::::::::#",
+      "#:::::::::::::::::::::B:::::BB:::::::::::::::::::::Bo:::::B::::::::::::::::::::#",
+      "#::::::::::::::::::::B::::aB:::::::::::::::::::::::::BB::::B:::::::::::::::::::#",
+      "#:::::::::::::::::::B::::B:::::::::::::::::::::::::::::B::::B::::::::::::::::::#",
+      "#::::::::::::::::::B::::B:::::::::C:::::::::::::::::::::B::::B:::::::::::::::::#",
+      "#:::::::::::::::::B::::B::::::::sssssssssssssssss::::::::B::::B::::::::::::::::#",
+      "#:::::::::::::::::B::::B::::::::sssssssssssssssss:M::::::B::::B::::::::::::::::#",
+      "#:::::::::::::::::B:::BB::::::::sssssssssssssssss::::::::BB:::B::::::::::::::::#",
+      "#:::::::::V:::::::B:::B:::::::::ssssssss*ssssssss:::::::::B:::B:::::::V::::::::#",
+      "#:::::::::::::::::B:::BB::::::::sssssssssssssssss::::::::BB:::B::::::::::::::::#",
+      "#:::::::::::::::::B::::B::::::L:sssssssssssssssss::::::::B::::B::::::::::::::::#",
+      "#:::::::::::::::::B::::B::::::::sssssssssssssssss::::::::B::::B::::::::::::::::#",
+      "#::::::::::::::::::B::::B:::::::::::::::::::::C:::::::::B::::B:::::::::::::::g:#",
+      "#:::::::::::::::::::B::::B:::::::::::::::::::::::::::::B::::B::::::::::::::::::#",
+      "#::::::::::::::::::::B::::BB:::::::::::::::::::::::::Bp::::B:::::::::::::::::::#",
+      "#:::::::::::::::::::::B:::::HB:::::::::::::::::::::BB:::::B::::::::::::::::::::#",
+      "#:::f::::::::::::::::::BB:::::BBB:::::::::::::::BBB:::::BB:::::::::::::::::::::#",
+      "#::::::::::::::::::::::::BB:::::::BBBBBBBBBBBBB:::::::BB:::::::::::::::::::::::#",
+      "#:::::::::::::::::::::::::::BB::::::::::j::::::::::BB:::::::::::::::::E::::::::#",
+      "#:S::::::::::::::::::::::::::::BBB:::::::::::::BBB:::::::::::::::::::::::::::::#",
+      "#:::::::::::::::::::l::::::::::::::::::BV:::::::::::::::::::l::::::::::::::::::#",
+      "################################################################################",
+    ],
+  },
+  gallery: {
+    name: "The Portrait Gallery", tag: "hold still",
+    blurb: "Arthur Benning's gallery. The lit hall is quick and it is his: when the camera comes up, get behind something or get out of the way. The dark rooms either side are long, full of supplies, and full of the Unwilling, posed and patient. One flash and every one of them turns.",
+    base: "dirt", ambient: 0.9, length: 3, threat: 4,
+    pressure: { every: 24, max: 6, types: ["unwilling", "eli", "unwilling"] },
+    palette: { fog: "#241a10", tint: "#fff2c8" },
+    map: [
+      "##############################################################################",
+      "#.............#...........#...........V...........#...........#...........#..#",
+      "#.............#...........#...a.......#...........#...........#.......p...#..#",
+      "#.............#.....C.....#...........#...........#.......C...#...........#..#",
+      "#.............j..............................................................#",
+      "#.....G.......#...........#...........#...........#...........#...........#..#",
+      "#.............#...........#...........#.....C.....#...........#...........#..#",
+      "#.............#...........#...........#...........#.H.........#...........#..#",
+      "#.............#...........#...........#...........#...........#...........#..#",
+      "########.########.########.########.########.########.########.########.######",
+      "#.....l.........l.........l.........l.........l.........l.........l..........#",
+      "#.................................................................u.........X#",
+      "#.S.....................................A...............j...................X#",
+      "#.............................k.............................................X#",
+      "#..........l.........l.........l.........l.........l.........l.........l.....#",
+      "############.########.########.########.########.########.########.########.##",
+      "#.........#...........#...........#...........#...........#...........#......#",
+      "#.........#...........#...........#...........#...........#...........#......#",
+      "#.........#...........#...........#...........C...........#.........E.#......#",
+      "#...f.....#...........#...........#...........#...........#...........#......#",
+      "#.........#...........C...........#...........#...........#...........#......#",
+      "#.........................j..................................................#",
+      "#.........#...........#...........b...........#...........#.....C.....#......#",
+      "#.........#...........#...........#...........#.........o.#...........#......#",
+      "#.........#...........#...........#...........#...V.......#...........#......#",
+      "##############################################################################",
+    ],
+  },
+  gate: {
+    name: "The Front Gate", tag: "it will not open by itself",
+    blurb: "The gate is chained and the chains are wired to three breakers. Throw them all. The Barker is between you and the way out, and he is not going to stop talking.",
+    base: "dirt", ambient: 0.84, length: 2, threat: 5, final: true,
+    pressure: { every: 32, max: 7, types: ["unwilling", "eli"] },
+    palette: { fog: "#2a0610", tint: "#ffcf4d" },
+    init(api) {
+      const g = api.game;
+      g.finale = {
+        thrown: 0, total: api.entities.filter((e) => e.type === "breaker").length,
+        working: null, open: false, barker: api.entities.find((e) => e.type === "barker") || null,
+      };
+      for (const ex of g.exits) {
+        const tx = Math.floor(ex.x / TILE), ty = Math.floor(ex.y / TILE);
+        api.block(tx, ty, true); api.spawn("gate", ex.x, ex.y, { tx, ty });
+      }
+    },
+    update(api) { if (api.game.finale) api.game.finale.working = null; },
+    map: [
+      "##########################################################",
+      "########################BBXXXXXXBB########################",
+      "#######################BBB......BBB#######################",
+      "#.......................l........l.......................#",
+      "#.V.......l.....H........................g.....l.......V.#",
+      "#...........................R............................#",
+      "#...T................................................T...#",
+      "#........................................................#",
+      "#...........BB..............................BB...........#",
+      "#...........BB..............BB..............BB...........#",
+      "#...........................BB...........................#",
+      "#........................................................#",
+      "#........................................................#",
+      "#....Y...j..................G...................j...Y....#",
+      "#...................BB..............BB...................#",
+      "#...................BB..............BB...................#",
+      "#........................................................#",
+      "#........................................................#",
+      "#...........................j............................#",
+      "#...........BB..............................BB...........#",
+      "#..a........BB..............................BB........a..#",
+      "#........................................................#",
+      "#...........................Y............................#",
+      "#.....T.................f.......p..................T.....#",
+      "#.............V.....l.......S........l.....V.............#",
+      "##########################################################",
     ],
   },
 };
@@ -436,8 +801,9 @@ export const LEVELS = {
 export const ROUTE = [
   ["midway"],
   ["mirrors", "pen"],
-  ["carousel", "silent"],
+  ["carousel", "silent", "gallery"],
   ["bigtop"],
+  ["gate"],
 ];
 
 /* ---------------------------------------------------------------- player */
@@ -463,6 +829,9 @@ export const TEXT = {
     teacup: "The teacup spun you until you forgot which way was out.",
     horse: "The carousel horse would not let go.",
     dunk: "The water was warm. Hands helped you up. They had white gloves.",
+    arthur: "The flash went off. When your eyes cleared, you were in the picture, standing in the yard with the others, smiling.",
+    barker: "\u201cAnd here she is, folks! Here he is!\u201d The Barker held your arm up to the lights, and the audience, who were everyone, applauded.",
+    jack: "The box sprang. The song kept playing. It played for a long, long time.",
     sanity: "You stopped running. You started laughing. You could not stop.",
     default: "They were kind about it. They always are.",
   },
