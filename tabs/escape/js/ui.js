@@ -761,7 +761,7 @@ export function createUI(root, H) {
       // finale objective
       const fin = game.finale;
       set("fin", fin ? `${fin.thrown}|${fin.total}|${fin.open ? 1 : 0}|${fin.working == null ? "-" : Math.round(fin.working * 25)}` : "", (v) => {
-        finEl.hidden = !fin; compass.classList.toggle("locked", !!fin && !fin.open);
+        finEl.hidden = !fin; hud.classList.toggle("in-finale", !!fin); compass.classList.toggle("locked", !!fin && !fin.open);
         if (!fin) return;
         const total = Math.max(0, fin.total | 0), thrown = Math.min(total, fin.thrown | 0);
         finEl.classList.toggle("open", !!fin.open);

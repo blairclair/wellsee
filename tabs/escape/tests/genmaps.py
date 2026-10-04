@@ -132,7 +132,7 @@ def pen():
     m.rect(1, 12, 78, 13, "~"); m.rect(28, 11, 50, 14, "~")
     # rabbits in pens, food in troughs
     m.pts("r", (14, 8), (48, 8), (36, 19), (40, 12), (64, 8))
-    m.pts("c", (9, 6)); m.pts("o", (33, 9)); m.pts("H", (30, 6)); m.pts("p", (51, 6)); m.pts("a", (70, 6)); m.pts("b", (21, 19)); m.pts("g", (39, 17)); m.pts("a", (60, 20))
+    m.pts("c", (9, 6)); m.pts("o", (33, 9)); m.pts("p", (30, 6), (38, 2)); m.pts("a", (70, 6)); m.pts("b", (21, 19)); m.pts("g", (39, 17)); m.pts("a", (60, 20))
     # lamps along the north lane
     for x in (10, 26, 44, 60, 74): m.set(x, 1, "l")
     m.pts("f", (4, 13))

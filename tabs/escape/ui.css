@@ -615,6 +615,56 @@ kbd.pad { border-radius: 10px; color: var(--cyan); border-color: #7af0ff55; }
   .summary { padding: .6rem .6rem .5rem; }
   .map-head { font-size: .68rem; }
 }
+/* phones: the choice comes first, the map below it; the HUD stays in the top ~15% */
+@media (max-width: 640px) {
+  .route-panel { display: flex; flex-direction: column; padding-top: 1.3rem; }
+  .route-panel h2 { order: 0; margin: .1rem 0 .3rem; font-size: 1.45rem; }
+  .route-hint { display: none; } /* flavour; the cards carry the choice */
+  .route-panel .choices { order: 2; gap: .55rem; }
+  .route-panel .map { order: 3; margin: 1rem 0 0; }
+  .route-panel .nav-hint { order: 4; }
+  .choice { gap: .2rem; padding: .6rem .75rem .55rem; animation-duration: .35s; }
+  .choice:hover, .choice:focus-visible { transform: none; }
+  .c-num { position: absolute; top: .65rem; right: .8rem; font-size: .6rem; }
+  .c-name { font-size: 1.12rem; }
+  .c-tag { font-size: .84rem; margin-top: -.1rem; }
+  .c-reward { font-size: .78rem; line-height: 1.25; }
+  .c-stats { flex-direction: row; gap: .9rem; margin: .1rem 0; }
+  .c-row { gap: .4rem; font-size: .68rem; }
+  .pips { gap: 3px; }
+  .pips i { width: 10px; height: 7px; }
+  .c-blurb { font-size: .8rem; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .choices[data-n="3"] .c-blurb { display: none; }
+  .c-grid { gap: .1rem .5rem; margin-top: .1rem; }
+  .c-sec { font-size: .6rem; }
+  .c-icons { min-height: 20px; gap: .1rem .3rem; }
+  .ci canvas { width: 18px !important; height: 18px !important; }
+  .ci.txt { font-size: .72rem; }
+  .c-foot { margin-top: 0; }
+  .c-go { display: none; } /* the whole card is the button */
+
+  .hud-top { padding: .3rem .4rem .7rem; gap: .25rem .4rem; align-items: center; }
+  .hud-vitals { gap: .2rem; }
+  .tickets, .sanity { grid-template-columns: 1fr auto; gap: .3rem; }
+  .v-label { display: none; } /* the meters keep their aria-labels */
+  .tk { height: 13px; }
+  .tube { height: 10px; }
+  .v-num { font-size: .66rem; }
+  .hud-right { flex-direction: row; align-items: center; gap: .25rem; }
+  .hud-dread { padding: .15rem; }
+  .dread-body { display: none; } /* the heart carries dread: colour and beat */
+  .hud-btn { width: 36px; height: 36px; padding: 8px; }
+  .hud-objective { flex-wrap: nowrap; gap: .3rem; }
+  .zone-plaque, .compass, .finale { min-height: 22px; }
+  .compass { padding: .05rem .5rem .05rem .3rem; font-size: .7rem; }
+  .compass .arrow { width: 13px; height: 13px; }
+  .hud.in-finale .zone-plaque { display: none; } /* the breaker count says where you are */
+  .finale { flex: 0 1 auto; max-width: none; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: .1rem .5rem; }
+  .fin-row { gap: .35rem; }
+  .fin-text { font-size: .72rem; white-space: nowrap; }
+  .fin-pips i { width: 8px; height: 11px; }
+  .fin-work { height: 3px; }
+}
 @media (max-height: 560px) {
   .marquee { padding: .9rem 1rem; }
   .title { font-size: clamp(2rem, 9vh, 3.6rem); }

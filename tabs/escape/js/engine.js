@@ -513,7 +513,8 @@ export function update(game, dt) {
     const rw = game.level.reward;
     if (rw) {
       if (rw.heal) api.heal(rw.heal); if (rw.sanity) api.sanity(rw.sanity);
-      if (rw.mend) for (const w of run.inventory) if (WEAPONS[w.id]) w.uses = Math.max(w.uses, WEAPONS[w.id].uses);
+      // restock: every weapon you carry out gains that fraction of a fresh one's uses
+      if (rw.restock) for (const w of run.inventory) if (WEAPONS[w.id]) w.uses += Math.max(1, Math.round(WEAPONS[w.id].uses * rw.restock));
       if (rw.toast) api.toast(rw.toast);
     }
     game.events.push({ type: "exit", x: p.x, y: p.y });
