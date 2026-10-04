@@ -5,4 +5,5 @@
 window.WELLSEE_TABS = [
   { slug: "about",  label: "The Legend",  path: "tabs/about/",  ready: true  },
   { slug: "clowns", label: "The Unwilling", path: "tabs/clowns/", ready: true },
+  { slug: "escape", label: "Escape the Midway", path: "tabs/escape/", ready: true },
 ];

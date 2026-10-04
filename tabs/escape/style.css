@@ -1,0 +1,23 @@
+/* style.css — page shell only: the stage fills the viewport under the nav.
+   HUD / menus / touch controls live in ui.css. */
+html, body { height: 100%; }
+body.escape {
+  display: flex; flex-direction: column;
+  height: 100vh; height: 100dvh; min-height: 0;
+  overflow: hidden; overscroll-behavior: none;
+}
+body.escape #site-nav { flex: none; }
+/* the game needs every pixel of height: keep the shared nav on one line here */
+@media (max-width: 640px) {
+  body.escape #site-nav { flex-wrap: nowrap; gap: .9rem; padding: .45rem .8rem; font-size: .9rem; overflow-x: auto; scrollbar-width: none; }
+  body.escape #site-nav ul { flex-wrap: nowrap; gap: .9rem; white-space: nowrap; }
+}
+#stage {
+  position: relative; flex: 1 1 auto; min-height: 0; width: 100%;
+  overflow: hidden; background: #07060a;
+  touch-action: none; user-select: none; -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+#game { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+#ui { position: absolute; inset: 0; pointer-events: none; }
+.noscript { position: absolute; inset: 0; display: grid; place-items: center; color: var(--ink-dim); }
