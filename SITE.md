@@ -43,9 +43,12 @@ tabs/<slug>/          one directory per tab, fully owned by that tab
 ## Deploying (do this as soon as your work is done)
 
 ```sh
-git add -A && git commit -m "<tab>: <what>"
-git fetch origin && git rebase origin/main     # registry conflict? keep every line from both sides
-git push origin HEAD:main                      # rejected? fetch + rebase + push again
-gh run watch "$(gh run list -w pages.yml -L1 --json databaseId -q '.[0].databaseId')" --exit-status
+scripts/deploy.sh "<tab>: <what>"
 ```
-Then confirm the live URL returns 200 and renders.
+Always use the script; never hand-roll push sequences. It commits, takes a lock in the
+shared git dir (worktrees share one `.git`, so parallel fetch/push race on ref locks),
+rebases onto `origin/main`, auto-resolves `assets/tabs.js` conflicts by slug
+(`scripts/merge_tabs.py`), retries rejected pushes, and follows the Pages run (a newer
+push cancels a pending run; the script follows the run that superseded it). Any other
+rebase conflict aborts with the file list: fix by hand and rerun. Never force-push.
+Then confirm your page's live URL returns 200 and renders.
