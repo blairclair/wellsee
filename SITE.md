@@ -40,12 +40,12 @@ tabs/<slug>/          one directory per tab, fully owned by that tab
   `tabs/<slug>/assets/CREDITS.md`.
 - Must work at phone width with no horizontal scroll; respect `prefers-reduced-motion`.
 
-## Deploying (after every targeted change)
+## Deploying (when each user-requested task is done)
 
-Deploy after each self-contained change rather than saving everything for one deploy
-at the end: one enemy redesigned, one bug fixed, one panel redrawn, one chapter
-written. Before each deploy, run your tests. Each deploy must leave the live site
-working, so don't ship half-finished work or make an unfinished feature reachable.
+Deploy when a task the user gave in a single prompt is complete, e.g. "make the clown
+characters more horrific" or "build the Rusty comic". If you hold several such tasks,
+deploy as each one finishes; don't wait for the others. Don't deploy individual small
+edits partway through a task. Run your tests first, and leave the live site working.
 
 ```sh
 scripts/deploy.sh "<tab>: <what>"
