@@ -45,6 +45,9 @@
     fig.setAttribute("aria-label", "Panel " + id.replace("p", ""));
     if (p.w / p.h >= 1.5) fig.classList.add("wide");
     if (p.phoneStrip) fig.classList.add("strip");
+    /* thin strips (>= 3:1, e.g. 1200x360) and tall splashes (full width, h >= 700) */
+    if (p.w / p.h >= 3) fig.classList.add("thin");
+    if (p.w >= 1200 && p.h >= 700) fig.classList.add("splash");
     /* optional per-panel mood (e.g. a dusk panel on a noon page): restyles its captions */
     if (p.mood) fig.setAttribute("data-mood", p.mood);
   }

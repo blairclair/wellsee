@@ -39,6 +39,10 @@ body { background:
 .page[data-mood="lurid"] { --pp: #e6c9b4; --paper-dot: #8b141422; }
 .page[data-mood="grey"]  { --pp: #c9c7c0; --paper-dot: #15100d1c; }
 .page[data-mood="dusk"]  { --pp: #e2c9b0; --paper-dot: #5a141422; }
+/* night (p30 and the night pages) and mirror (Chapter 8): page or single-panel moods, like dusk.
+   mirror falls back to the grey page look, cooled toward silver. */
+.page[data-mood="night"] { --pp: #c9c4b8; --paper-dot: #0b163222; }
+.page[data-mood="mirror"] { --pp: #c6c9c8; --paper-dot: #15100d1c; }
 
 .page-head {
   display: flex; align-items: baseline; gap: .75rem; flex-wrap: wrap;
@@ -85,6 +89,13 @@ body { background:
 /* dusk: a page mood, or a single panel's (a panel file may set mood:"dusk"; comic.js puts it on the figure) */
 .page[data-mood="dusk"] .cap, .panel[data-mood="dusk"] .cap { background: #2a1420; color: #f3c9a0; border-color: #000; }
 .page[data-mood="dusk"] .page-head .num { color: #6a1a2a; }
+.page[data-mood="night"] .cap, .panel[data-mood="night"] .cap { background: #10162a; color: #cdd6e6; border-color: #000; }
+.page[data-mood="night"] .page-head .num { color: #1d2a52; }
+.page[data-mood="mirror"] .cap, .panel[data-mood="mirror"] .cap { background: #e3e5e3; color: #1f2528; }
+.page[data-mood="mirror"] .page-head .num { color: #4a4f52; }
+/* thin strips (>= 3:1; comic.js adds .thin): smaller captions so they don't fill the height */
+.panel.thin .cap { font-size: clamp(12px, 1.35cqw, 15px); padding: .25em .5em; }
+.panel.thin .caps { padding: 5px; gap: 4px; }
 .page[data-mood="cover"] .cap { background: #0d0909e6; color: var(--bulb); border-color: #000; font-style: italic; }
 
 .bal {
@@ -132,6 +143,8 @@ body { background:
   .page[data-mood="lurid"] .caps, .page[data-mood="cover"] .caps { background: #1a0b0b; }
   .page[data-mood="grey"] .caps { background: #dedbd2; }
   .page[data-mood="dusk"] .caps, .panel[data-mood="dusk"] .caps { background: #2a1420; }
+  .page[data-mood="night"] .caps, .panel[data-mood="night"] .caps { background: #10162a; }
+  .page[data-mood="mirror"] .caps, .panel[data-mood="mirror"] .caps { background: #e3e5e3; }
   .cap.dark { background: transparent; color: inherit; }
   /* square and tall panels keep overlaid balloons, but a % width of a ~335px panel turns
      them into towers: give every balloon at least ~36% of the art (comic.js anchors
