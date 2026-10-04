@@ -108,7 +108,7 @@ kbd { font-family: ui-monospace, monospace; font-size: .8em; padding: .05rem .35
 /* ================================================================ route */
 .screen-route .panel { width: min(64rem, 100%); }
 .route-hint { text-align: center; color: var(--ink-dim); font-style: italic; margin: -.3rem auto 1rem; max-width: 40rem; }
-.route-track { display: flex; align-items: center; justify-content: center; gap: .3rem; margin: 0 auto 1rem; flex-wrap: nowrap; overflow-x: auto; padding-bottom: .3rem; }
+.route-track { display: flex; align-items: center; justify-content: safe center; gap: .3rem; margin: 0 auto 1rem; flex-wrap: nowrap; overflow-x: auto; padding-bottom: .3rem; }
 .rt-col { display: flex; flex-direction: column; gap: .3rem; }
 .rt-node { font-family: var(--caps); font-size: .78rem; letter-spacing: .05em; padding: .25rem .5rem; border: 1px solid #3a2a2a; color: #6a5a50; background: #0e0a0c; white-space: nowrap; border-radius: 3px; }
 .rt-col.now .rt-node { border-color: var(--gold); color: var(--gold); box-shadow: 0 0 12px #f6d27a44; animation: chase 2s infinite; }

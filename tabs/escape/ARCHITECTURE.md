@@ -43,7 +43,7 @@ the state for debugging and automated play-tests.
 **game** (one zone): `{ run, levelId, level, w, h, tiles:[tileName], entities:[], events:[], time, status:{name:secondsLeft}, silence, dread(0..1, smoothed), player, exits:[{x,y}], exitPos, outcome:null|{type:"exit"}|{type:"caught", by}, api }`
 
 **entity**: `{ id, cat:"enemy"|"obstacle"|"proj"|"pickup", type, def, x, y, hx, hy (spawn point), vx, vy, r, face (radians), t (age) ... }`
-- enemy adds `stun, alert, frozen (mime is being watched), hitFlash, relentless, snared`
+- enemy adds `stun, alert, frozen (Lettie is being watched), hitFlash, relentless, snared`
 - pickup adds `weapon` or `item`, `uses`
 - proj adds `life, age, rot, returning, hitIds`
 - obstacles keep whatever their hooks put on them (`phase, spin, lit, ang, len, open, age`)
@@ -81,7 +81,7 @@ Route-map loot/hazards/foes are computed from the map by `engine.summarizeLevel`
 
 ### Legend
 `#` tent `=` fence `B` booth `T` dead tree `l` lamp `m` mirror · `.` dirt `,` boards `"` grass `:` sawdust
-`s` silence `~` water `X` exit `S` start `V` tent flap (spawner) · `C` Grinner `L` Stiltwalker `M` Mime `r` rabbit ·
+`s` silence `~` water `X` exit `S` start `V` tent flap (spawner) · `C` the Unwilling `F` Tobias Fenn `L` Samuel Hale `M` Lettie Ames `E` Eli Pruitt `r` rabbit ·
 `u` teacup `h` carousel horse `k` cursed cookie `D` dunk tank `*` searchlight ·
 `f` fork `H` hat `c` cotton-candy snare `o` rings `p` popcorn `g` mallet · `a` candy apple `b` bug lantern
 
@@ -91,7 +91,7 @@ Route-map loot/hazards/foes are computed from the map by `engine.summarizeLevel`
 `heal(n)` `sanity(delta)` `hurt(n, sx, sy, cause) -> applied` `shove(sx, sy, force)` (player) ·
 `knock(enemy, sx, sy, force, stun)` `enemiesNear(x, y, r)` `countEnemies()` `spawn(type, x, y, props) -> e` `remove(e)` ·
 `melee(opts)` `projectile(type, opts)` `burst(opts)`.
-Statuses in use: `reversed` (mirror), `stuck` (dunk tank), `marked` (cookie / searchlight: every Player knows where you are).
+Statuses in use: `reversed` (mirror), `stuck` (dunk tank), `marked` (cookie / searchlight: every one of the Unwilling knows where you are).
 
 ## Events (`game.events`, consumed by art / audio / ui)
 `hit{x,y,type,force}` `ding` `hurt{x,y,n,cause}` `grab{x,y,enemy}` `swing{x,y,face,range,arc,heavy,weapon}`
@@ -115,7 +115,7 @@ Unknown events must be ignored by consumers, so anyone can add new ones.
   with `game.dread`, heartbeat pulse at high dread.
 - **Safety**: full-screen flashes go through `flash()` which rate-limits to one per 0.4 s (< 3/s) and
   weakens them under `view.reduced`; `shake()` is disabled under reduced motion. Keep it that way.
-- Cinematics: `renderTitle`, `renderCaught(ctx, W, H, t, view, cause)` (face painted into a Player over 4 s;
+- Cinematics: `renderTitle`, `renderCaught(ctx, W, H, t, view, cause)` (face whitened and given a second red mouth over 4 s;
   keep it in the top ~half — the lost text sits below), `renderWin` (top half, same reason), `renderBackdrop`.
 
 ## UI contract (ui.js)
@@ -131,5 +131,6 @@ The nav is forced onto one line on phones by `style.css` so the stage keeps its 
 node tabs/escape/tests/maps.test.mjs     # every map rectangular, closed, start->exit reachable
 node tabs/escape/tests/engine.test.mjs   # bot walks every level to the exit, idle run resolves, no throws
 ```
-For a browser check, Playwright works: load the page, click `.js-start`, `.choice`, play, and inspect
-`window.__escape` (see the phase-1 report for the script used).
+Browser play-test: `tests/play.browser.cjs` (Playwright; setup in its header). It drives the real page on
+desktop and a 375px phone via `window.__escape` (teleports to exits, forces a catch), saves screenshots to
+`./shots/`, and prints console errors, fps and horizontal-scroll width.

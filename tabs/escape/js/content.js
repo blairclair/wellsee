@@ -15,7 +15,7 @@ export const TILE = 32;
 
 /* ---------------------------------------------------------------- tiles
  * solid: blocks movement.  slow: speed multiplier while standing on it.
- * silence: the bugs stop here; every Player knows where you are.
+ * silence: the bugs stop here; every one of the Unwilling knows where you are.
  * exit: standing on it finishes the zone.
  * light: {r, color, flicker} — a light source at the tile centre.
  * touch(api, ent): called when a walker bumps a solid tile (player only).
@@ -43,7 +43,7 @@ export const TILES = {
   silence: { silence: true },
   water:   { slow: 0.45 },
   exit:    { exit: true, light: { r: 210, color: "#9dff6a", flicker: 0.05 } },
-  door:    {}, // tent flap a Player can step out of (see OBSTACLES.spawner)
+  door:    {}, // tent flap the Unwilling step out of (see OBSTACLES.spawner)
 };
 
 /* ---------------------------------------------------------------- weapons
@@ -56,7 +56,7 @@ export const TILES = {
 export const WEAPONS = {
   fork: {
     name: "Funnel-Cake Fork", short: "Fork", uses: 14, cooldown: 0.32, color: "#f6d27a",
-    desc: "A two-tined fork, still sugared. Jab a Player back a few steps.",
+    desc: "A two-tined fork, still sugared. Jab one of the Unwilling back a few steps.",
     use(api) { return api.melee({ range: 50, arc: 1.3, force: 430, stun: 1.0 }); },
   },
   hat: {
@@ -66,12 +66,12 @@ export const WEAPONS = {
   },
   candy: {
     name: "Cotton-Candy Snare", short: "Snare", uses: 3, cooldown: 0.6, color: "#ff7ad9",
-    desc: "Lob a sticky pink cloud. Players caught in it are stuck fast.",
+    desc: "Lob a sticky pink cloud. Anything caught in it is stuck fast.",
     use(api) { return api.projectile("candy", { speed: 300 }); },
   },
   rings: {
     name: "Ring-Toss Rings", short: "Rings", uses: 10, cooldown: 0.18, color: "#7af0ff",
-    desc: "Fast, light, rapid. Each ring knocks a Player off its stride.",
+    desc: "Fast, light, rapid. Each ring knocks them off their stride.",
     use(api) { return api.projectile("ring", { speed: 560 }); },
   },
   popcorn: {
@@ -81,7 +81,7 @@ export const WEAPONS = {
   },
   mallet: {
     name: "High-Striker Mallet", short: "Mallet", uses: 6, cooldown: 0.7, color: "#ff4d4d",
-    desc: "DING. Slow and heavy. Sends a Player clean across the midway.",
+    desc: "DING. Slow and heavy. Sends them clean across the midway.",
     use(api) { return api.melee({ range: 62, arc: 1.7, force: 900, stun: 1.8, heavy: true }); },
   },
 };
@@ -110,22 +110,39 @@ export const PROJECTILES = {
  * sense: px radius at which it notices you (silence/marked = infinite).
  * stunMul: multiplier on incoming stun. mass: divides knockback.
  * damage: health lost on contact. dreadAura: sanity drain/s when near.
+ * onCatch(e, api): optional, runs after a contact hit lands.
+ *
+ * Canon (see tabs/clowns/, "The Unwilling", file 31-W): they are not clowns —
+ * clowns choose it. They are the people who refused the light, taken in the
+ * night, painted white with a second red mouth, and sent to fetch the next
+ * one who refuses. Victims and monsters both.
  */
 export const ENEMIES = {
-  grinner: {
-    name: "The Grinner", behavior: "hunter", r: 13, speed: 104, accel: 700,
+  unwilling: {
+    name: "The Unwilling", behavior: "hunter", r: 13, speed: 104, accel: 700,
     sense: 300, stunMul: 1, mass: 1, damage: 20, dreadAura: 3,
-    lore: "Once a man who would not come. Now he will not stop smiling.",
+    lore: "Someone who stayed home when the light came. Whitened face, a second mouth painted over the first. Sent to fetch you.",
   },
-  stilt: {
-    name: "The Stiltwalker", behavior: "hunter", r: 14, speed: 158, accel: 260,
-    sense: 380, stunMul: 1.5, mass: 1.3, damage: 25, dreadAura: 4,
-    lore: "Fast in a straight line. Turns like a falling tree.",
+  tobias: {
+    unique: true, name: "Tobias Fenn", behavior: "hunter", r: 15, speed: 86, accel: 500,
+    sense: 320, stunMul: 0.8, mass: 1.8, damage: 24, dreadAura: 4,
+    lore: "The dairyman in overalls, white handprints on the bib. Slow. When he takes hold of something, he does not let go.",
+    onCatch(e, api) { api.status("stuck", 0.7); api.toast("Tobias Fenn holds on, the way he held the arms of that chair."); },
   },
-  mime: {
-    name: "The Mime", behavior: "weeper", r: 12, speed: 210, accel: 2000,
+  sam: {
+    unique: true, name: "Samuel Hale", behavior: "hunter", r: 13, speed: 160, accel: 260,
+    sense: 380, stunMul: 1.5, mass: 1.3, damage: 24, dreadAura: 4,
+    lore: "Marched toward every light on every island. Fast in a straight line; turns like a falling tree. Two discs on a chain.",
+  },
+  lettie: {
+    unique: true, name: "Lettie Ames", behavior: "weeper", r: 12, speed: 210, accel: 2000,
     sense: 9999, stunMul: 0.8, mass: 0.9, damage: 18, dreadAura: 2, silent: true,
-    lore: "It only moves while you are not looking. Do not turn your back.",
+    lore: "Fingers white to the second knuckle with chalk. She only moves while you are not looking. Heads down, class.",
+  },
+  eli: {
+    unique: true, name: "Eli Pruitt", behavior: "hunter", r: 9, speed: 138, accel: 900,
+    sense: 330, stunMul: 1.3, mass: 0.6, damage: 10, dreadAura: 3,
+    lore: "The little one, no shoes, skipping. He asks everyone if they have seen a yellow dog. He cannot remember her name.",
   },
   rabbit: {
     name: "Morphed Rabbit", behavior: "hopper", r: 11, speed: 0, accel: 0, hop: 420,
@@ -173,7 +190,7 @@ export const OBSTACLES = {
     touch(e, api) {
       api.heal(30); api.sanity(-30); api.status("marked", 7);
       api.emit("cookie", { x: e.x, y: e.y });
-      api.toast("You ate the cookie. Every Player turns toward you.");
+      api.toast("You ate the cookie. Every painted face turns toward you.");
       api.remove(e);
     },
   },
@@ -220,8 +237,9 @@ export const OBSTACLES = {
       if (e.timer > 0) return;
       e.timer = pr.every * (0.8 + Math.random() * 0.4);
       if (api.countEnemies() >= pr.max) return;
-      const type = pr.types[(Math.random() * pr.types.length) | 0];
-      // Players sent out by the tents never stop hunting you.
+      let type = pr.types[(Math.random() * pr.types.length) | 0];
+      if (ENEMIES[type].unique && api.entities.some((o) => o.type === type)) type = "unwilling";
+      // The Unwilling sent out by the tents never stop hunting you.
       const en = api.spawn(type, e.x, e.y); en.alert = 4; en.relentless = true; e.open = 1.2;
       api.emit("spawn", { x: e.x, y: e.y, type });
       api.toast("A tent flap opens. Someone steps out.");
@@ -252,7 +270,8 @@ export const LEGEND = {
   "s": { tile: "silence" }, "~": { tile: "water" }, "X": { tile: "exit" },
   "S": { start: true },
   "V": { tile: "door", obstacle: "spawner" },
-  "C": { enemy: "grinner" }, "L": { enemy: "stilt" }, "M": { enemy: "mime" }, "r": { enemy: "rabbit" },
+  "C": { enemy: "unwilling" }, "F": { enemy: "tobias" }, "L": { enemy: "sam" }, "M": { enemy: "lettie" }, "E": { enemy: "eli" },
+  "r": { enemy: "rabbit" },
   "u": { obstacle: "teacup" }, "h": { obstacle: "horse" }, "k": { obstacle: "cookie" },
   "D": { obstacle: "dunk", tile: "water" }, "*": { obstacle: "searchlight" },
   "f": { weapon: "fork" }, "H": { weapon: "hat" }, "c": { weapon: "candy" }, "o": { weapon: "rings" },
@@ -263,7 +282,7 @@ export const LEGEND = {
 /* ---------------------------------------------------------------- levels
  * map: rows of LEGEND chars (ragged rows are padded with tent walls).
  * base: floor tile under entity chars.  ambient: darkness 0..1.
- * pressure: Players stepping out of tent flaps ('V') over time.
+ * pressure: the Unwilling stepping out of tent flaps ('V') over time.
  * length/threat (1-5) are shown on the route map; hazards & loot are
  * computed from the map automatically.
  * palette: hints for art (floor tint, fog colour).
@@ -273,7 +292,7 @@ export const LEVELS = {
     name: "The Midway", tag: "where the bulbs still burn",
     blurb: "Booths line the boardwalk. The lit lane is quick, and watched. The alleys behind are long, dark, and full of things people dropped while running.",
     base: "boards", ambient: 0.9, length: 2, threat: 2,
-    pressure: { every: 26, max: 4, types: ["grinner"] },
+    pressure: { every: 26, max: 4, types: ["unwilling", "unwilling", "eli"] },
     palette: { fog: "#3a0f2a", tint: "#ff4d6d" },
     map: [
       "############################################",
@@ -292,7 +311,7 @@ export const LEVELS = {
       "#..........................................#",
       "#..====...........======.........=====...b.#",
       "#..o.....................*.................#",
-      "#..................C.......................#",
+      "#..................E.......................#",
       "############################################",
     ],
   },
@@ -300,7 +319,7 @@ export const LEVELS = {
     name: "Hall of Mirrors", tag: "short, and it looks back",
     blurb: "The quickest way through. Glass on every side. Touch a mirror and your hands forget which way is which. Something in here only moves when you look away.",
     base: "sawdust", ambient: 0.9, length: 1, threat: 4,
-    pressure: { every: 30, max: 4, types: ["mime", "grinner"] },
+    pressure: { every: 30, max: 4, types: ["lettie", "unwilling"] },
     palette: { fog: "#10233a", tint: "#7af0ff" },
     map: [
       "#######################################",
@@ -312,8 +331,8 @@ export const LEVELS = {
       "#::mmmmmmmmm::::::mmmmmmmmm::mmm::::::#",
       "#::::::::::m::::::m::::::::::::::::a::#",
       "#mmmmm:::::m::k:::m:::mmmmmm:::mmmmm::#",
-      "#::::m::M::m::::::m:::m::::m:::::::m::#",
-      "#::H:m:::::mmmmV:mm:::m::l:m:::M:::m::#",
+      "#::::m::C::m::::::m:::m::::m:::::::m::#",
+      "#::H:m:::::mmmmV:mm:::m::l:m:::C:::m::#",
       "#:::::::::::::::::::::::::::::::::::::#",
       "#######################################",
     ],
@@ -322,7 +341,7 @@ export const LEVELS = {
     name: "The Petting Pen", tag: "long, and something is feeding",
     blurb: "The long way round, through the pens. The rabbits were sweet once. There is food left in the troughs, and things worth carrying. It takes time. Time is what the tents want.",
     base: "grass", ambient: 0.86, length: 4, threat: 2,
-    pressure: { every: 20, max: 5, types: ["grinner"] },
+    pressure: { every: 20, max: 5, types: ["unwilling", "eli", "tobias"] },
     palette: { fog: "#1c2a10", tint: "#9dff6a" },
     map: [
       "#################################################",
@@ -337,7 +356,7 @@ export const LEVELS = {
       '#"""a""""""""=""""""""""=""""r""""""=""""""p""""#',
       '#""""""""r"""=""""""""""=""""""""""=""""""""""""#',
       '#"""""""""""""=====V=====""""""""""=""""""""""""#',
-      '#""""""""""""""""""""""""""""""C""""""""""""""""#',
+      '#""""""""""""""""""""""""""""""F""""""""""""""""#',
       '#"""b"""""""""""""""""""""""""""""""""""""""""XX#',
       "#################################################",
     ],
@@ -346,7 +365,7 @@ export const LEVELS = {
     name: "Carousel Row", tag: "round and round",
     blurb: "Painted horses circle off their poles. Teacups spin without riders. The dunk tank never drains. There is a mallet on the high-striker if you can reach it.",
     base: "boards", ambient: 0.85, length: 3, threat: 3,
-    pressure: { every: 22, max: 5, types: ["grinner", "grinner", "stilt"] },
+    pressure: { every: 22, max: 5, types: ["unwilling", "tobias", "sam"] },
     palette: { fog: "#2a1236", tint: "#ffb347" },
     map: [
       "##############################################",
@@ -367,9 +386,9 @@ export const LEVELS = {
   },
   silent: {
     name: "The Silent Field", tag: "short, and nothing sings",
-    blurb: "Straight across the trampled field. No bugs. No crickets. No sound at all, and in that silence every Player hears your heart. Stiltwalkers cross it in four strides.",
+    blurb: "Straight across the trampled field. No bugs. No crickets. No sound at all, and in that silence every one of the Unwilling hears your heart. Samuel Hale crosses it in four strides.",
     base: "grass", ambient: 0.9, length: 2, threat: 5,
-    pressure: { every: 18, max: 4, types: ["stilt", "grinner"] },
+    pressure: { every: 18, max: 4, types: ["sam", "unwilling", "eli"] },
     palette: { fog: "#1a1a22", tint: "#c8c8ff" },
     map: [
       "########################################",
@@ -387,9 +406,9 @@ export const LEVELS = {
   },
   bigtop: {
     name: "The Big Top", tag: "the gate is through the ring",
-    blurb: "The only way out is through the ring. The audience is all Players now, and the show has been waiting for you. Beyond the far flap: the gate.",
+    blurb: "The only way out is through the ring. The audience is all the Unwilling now, and the show has been waiting for you. Beyond the far flap: the gate.",
     base: "sawdust", ambient: 0.88, length: 3, threat: 5, final: true,
-    pressure: { every: 15, max: 7, types: ["grinner", "stilt", "mime"] },
+    pressure: { every: 15, max: 7, types: ["unwilling", "sam", "lettie", "tobias", "eli"] },
     palette: { fog: "#3a0808", tint: "#ff2a2a" },
     map: [
       "##############################################",
@@ -398,7 +417,7 @@ export const LEVELS = {
       "#:::::::#::::l:::::::::::::::l:::::#::::k::::#",
       "#:::::::::::::::::::::u::::::::::::::::::::::#",
       "#::a::::#:::::::sssssssssss::::::::#:::::::::#",
-      "#:::::::#::::C::sssssssssss::::L:::#:::::::::#",
+      "#:::::::#::::F::sssssssssss::::L:::#:::::::::#",
       "#########:::::::sssss*sssss::::::::####:::####",
       "#:::::::::::::::sssssssssss::::::::::::::::::#",
       "#::o::::#:::::::sssssssssss:::::::::#:::::H::#",
@@ -435,10 +454,12 @@ export const TEXT = {
   title: "Escape the Midway",
   subtitle: "One does not refuse the carnival when its light shines upon them.",
   caught: {
-    grinner: "The Grinner caught your wrist. It was gentle. It was so gentle.",
-    stilt: "The Stiltwalker folded down over you like a tent coming down.",
-    mime: "You turned around. It was already there. It had been there the whole time.",
-    rabbit: "The rabbits were hungry. The Players were patient.",
+    unwilling: "White-greased hands took your wrist. They were gentle. They were so gentle.",
+    tobias: "Tobias Fenn held on to you the way he held the arms of that chair. He did not let go.",
+    sam: "Samuel Hale said he was sorry. He said it while he nailed the door shut behind you, from the outside.",
+    lettie: "You turned around. Miss Ames was already there. \"Put your head down,\" she said. Your name was on a blackboard a week ago.",
+    eli: "The little one asked if you had a dog. You didn't. He laughed anyway, and skipped, and then he had your shoes.",
+    rabbit: "The rabbits were hungry. The Unwilling were patient.",
     teacup: "The teacup spun you until you forgot which way was out.",
     horse: "The carousel horse would not let go.",
     dunk: "The water was warm. Hands helped you up. They had white gloves.",

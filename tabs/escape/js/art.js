@@ -288,32 +288,83 @@ export const ICONS = {
 };
 
 /* ================================================================ figures */
-function clownHead(ctx, x, y, r, t, e, opts = {}) {
-  // hair tufts
-  const hair = opts.hair || PAL.candy;
-  for (const sx of [-1, 1]) for (let i = 0; i < 3; i++) circle(ctx, x + sx * (r * 0.95 + i * 1.5), y - r * 0.2 + i * 3 - 3, r * 0.42, hair);
-  // face
+/* A painted face: greasepaint white over skin, eyes sunk in smudge, the real
+   mouth fixed open, and a second, wider red mouth painted over it. */
+function paintedHead(ctx, x, y, r, t, e, o = {}) {
+  const hair = o.hair || "#2a1c14";
+  // hair (their own; greasy, uncombed)
+  ctx.fillStyle = hair;
+  ctx.beginPath(); ctx.arc(x, y - r * 0.15, r * 1.05, Math.PI * 0.95, Math.PI * 2.05); ctx.fill();
+  if (!o.crop) for (const sx of [-1, 1]) { ctx.beginPath(); ctx.ellipse(x + sx * r * 0.95, y + r * 0.1, r * 0.28, r * 0.6, sx * 0.2, 0, TAU); ctx.fill(); }
+  if (o.bun) circle(ctx, x, y - r * 1.15, r * 0.45, hair);
+  if (o.cowlick) { ctx.strokeStyle = hair; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x + 1, y - r); ctx.quadraticCurveTo(x + 4, y - r * 1.7, x + 6, y - r * 1.3); ctx.stroke(); }
+  // greasepaint
   const g = ctx.createRadialGradient(x - r * 0.3, y - r * 0.3, r * 0.2, x, y, r);
-  g.addColorStop(0, "#fffdf6"); g.addColorStop(1, "#cfc6b4");
-  circle(ctx, x, y, r, g);
-  // eyes: black hollows, tiny pupils that glow when hunting
+  g.addColorStop(0, "#fbf8f0"); g.addColorStop(0.8, "#e4ddd0"); g.addColorStop(1, "#b9ad98");
+  ctx.beginPath(); ctx.ellipse(x, y, r * 0.92, r, 0, 0, TAU); ctx.fillStyle = g; ctx.fill();
+  // where the paint thins, skin shows at the jaw
+  ctx.fillStyle = "rgba(200,150,120,.35)"; ctx.beginPath(); ctx.ellipse(x + r * 0.5, y + r * 0.7, r * 0.25, r * 0.15, 0.5, 0, TAU); ctx.fill();
+  // eyes
   const alert = e && e.alert > 0;
   for (const sx of [-1, 1]) {
-    ctx.fillStyle = "#120a10"; ctx.beginPath(); ctx.ellipse(x + sx * r * 0.38, y - r * 0.18, r * 0.24, r * 0.32, sx * 0.3, 0, TAU); ctx.fill();
-    circle(ctx, x + sx * r * 0.36, y - r * 0.16, r * 0.07, alert ? PAL.bulbHot : "#555");
-    ctx.strokeStyle = "#3a6bd9"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x + sx * r * 0.38, y - r * 0.6); ctx.lineTo(x + sx * r * 0.38, y - r * 0.85); ctx.stroke();
+    ctx.fillStyle = "rgba(40,20,30,.55)"; ctx.beginPath(); ctx.ellipse(x + sx * r * 0.36, y - r * 0.12, r * 0.3, r * 0.36, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = "#0e070a"; ctx.beginPath(); ctx.ellipse(x + sx * r * 0.36, y - r * 0.15, r * 0.15, r * 0.2, 0, 0, TAU); ctx.fill();
+    circle(ctx, x + sx * r * 0.36, y - r * 0.17, r * 0.06, alert ? PAL.bulbHot : "#6a6a6a");
+    // a run of paint like a tear
+    ctx.fillStyle = "rgba(255,255,255,.55)"; ctx.fillRect(x + sx * r * 0.4, y + r * 0.08, 0.8, r * 0.35);
   }
-  // grin
-  const w = opts.grin || 0.75;
-  ctx.fillStyle = "#b0102a"; ctx.beginPath();
-  ctx.moveTo(x - r * w, y + r * 0.12); ctx.quadraticCurveTo(x, y + r * 1.05, x + r * w, y + r * 0.12);
-  ctx.quadraticCurveTo(x, y + r * 0.55, x - r * w, y + r * 0.12); ctx.fill();
-  ctx.fillStyle = "#1a0306"; ctx.beginPath();
-  ctx.moveTo(x - r * w * 0.8, y + r * 0.22); ctx.quadraticCurveTo(x, y + r * 0.85, x + r * w * 0.8, y + r * 0.22);
-  ctx.quadraticCurveTo(x, y + r * 0.5, x - r * w * 0.8, y + r * 0.22); ctx.fill();
-  ctx.fillStyle = "#f4ead0";
-  for (let i = -3; i <= 3; i++) { const tx = x + i * r * 0.17; ctx.fillRect(tx - r * 0.06, y + r * 0.34 + Math.abs(i) * -r * 0.035, r * 0.12, r * 0.14); }
-  circle(ctx, x, y + r * 0.06, r * 0.18, PAL.candy); circle(ctx, x - r * 0.05, y, r * 0.06, "rgba(255,255,255,.6)");
+  // the second mouth: painted, wide, upturned
+  const w = o.grin || 0.82;
+  ctx.fillStyle = "#c0122c"; ctx.beginPath();
+  ctx.moveTo(x - r * w, y + r * 0.05); ctx.quadraticCurveTo(x, y + r * 1.0, x + r * w, y + r * 0.05);
+  ctx.quadraticCurveTo(x, y + r * 0.62, x - r * w, y + r * 0.05); ctx.fill();
+  ctx.strokeStyle = "#7a0a18"; ctx.lineWidth = 0.7; ctx.stroke();
+  // the real mouth, fixed open beneath the paint
+  ctx.fillStyle = "#14040a"; ctx.beginPath(); ctx.ellipse(x, y + r * 0.5, r * 0.16, r * 0.22, 0, 0, TAU); ctx.fill();
+}
+
+/* An Unwilling body. Draws upward from the feet. o: coat, legs, hair, h (height
+   scale), width, r (head), dress, stripes, barefoot, crop, bun, cowlick, chalk,
+   pose ("reach" | "point"), over(ctx,k) for chest details, hand(ctx) for a held item. */
+function figure(ctx, e, t, o) {
+  const k = o.h || 1, wd = o.width || 1, r = o.r || 9.5;
+  const speed = Math.hypot(e.vx || 0, e.vy || 0), walking = speed > 20 && !e.frozen;
+  const stride = walking ? Math.sin(e.t * 8) * 3 : 0;
+  shadow(ctx, 11 * wd);
+  hitTint(ctx, e, () => {
+    ctx.save(); if (e.stun > 0) ctx.rotate(Math.sin(t * 9) * 0.13);
+    // legs / feet
+    if (!o.dress) {
+      ctx.fillStyle = o.legs; ctx.fillRect(-5 * wd, -12 * k + stride * 0.3, 4 * wd, 12 * k - stride * 0.3); ctx.fillRect(1 * wd, -12 * k - stride * 0.3, 4 * wd, 12 * k + stride * 0.3);
+      const foot = o.barefoot ? "#e4ddd0" : "#1a1214";
+      ellipse(ctx, -3 * wd, -0.5, 3.4, 1.8, foot); ellipse(ctx, 3 * wd, -0.5, 3.4, 1.8, foot);
+    } else {
+      ctx.fillStyle = o.coat; ctx.beginPath(); ctx.moveTo(-10, 0); ctx.quadraticCurveTo(0, 2 + stride, 10, 0); ctx.lineTo(6, -22 * k); ctx.lineTo(-6, -22 * k); ctx.fill();
+      ctx.fillStyle = "rgba(0,0,0,.25)"; for (let i = -1; i <= 1; i++) ctx.fillRect(i * 4 - 0.5, -18 * k, 1, 17 * k);
+    }
+    // torso
+    ctx.fillStyle = o.coat; ctx.beginPath(); ctx.moveTo(-8 * wd, -11 * k); ctx.lineTo(8 * wd, -11 * k); ctx.lineTo(7 * wd, -31 * k); ctx.lineTo(-7 * wd, -31 * k); ctx.fill();
+    if (o.stripes) { ctx.fillStyle = o.stripes; for (let i = 0; i < 4; i++) ctx.fillRect(-7 * wd, (-29 + i * 5) * k, 14 * wd, 2); }
+    if (o.over) o.over(ctx, k);
+    // arms
+    const reach = e.alert > 0 && e.stun <= 0 ? 1 : 0.25;
+    ctx.strokeStyle = o.coat; ctx.lineWidth = 3.6 * wd; ctx.lineCap = "round";
+    let lh, rh;
+    if (o.pose === "point") { lh = [-9, -20 * k]; rh = [15, -38 * k]; }
+    else { lh = [-13 * wd, (-18 - reach * 9) * k + stride]; rh = [13 * wd, (-18 - reach * 9) * k - stride]; }
+    ctx.beginPath(); ctx.moveTo(-7 * wd, -29 * k); ctx.lineTo(lh[0], lh[1]); ctx.moveTo(7 * wd, -29 * k); ctx.lineTo(rh[0], rh[1]); ctx.stroke();
+    // greased hands; chalk-white fingertips for the teacher
+    for (const [hx, hy] of [lh, rh]) {
+      circle(ctx, hx, hy, 3, "#efe9dc");
+      if (o.chalk) { ctx.fillStyle = "#ffffff"; ctx.fillRect(hx - 2, hy - 4.5, 4, 2.4); }
+    }
+    if (o.hand) { ctx.save(); ctx.translate(rh[0], rh[1]); o.hand(ctx); ctx.restore(); }
+    // collar
+    ctx.fillStyle = "rgba(0,0,0,.35)"; ctx.fillRect(-4, -32 * k, 8, 2);
+    paintedHead(ctx, 0, -32 * k - r * 0.9, r, t, e, o);
+    if (e.stun > 0) stunStars(ctx, -32 * k - r * 2.6, t);
+    ctx.restore();
+  });
 }
 
 function stunStars(ctx, y, t, n = 3) {
@@ -327,7 +378,7 @@ function stunStars(ctx, y, t, n = 3) {
 
 function hitTint(ctx, e, draw) {
   draw();
-  if (e.hitFlash > 0) { ctx.globalCompositeOperation = "source-atop"; ctx.globalAlpha = 0.5; draw(); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; }
+  if (e.hitFlash > 0) { ctx.save(); ctx.filter = "brightness(2.4) saturate(0.4)"; ctx.globalAlpha = 0.65; draw(); ctx.restore(); }
 }
 
 export const ENTITY_ART = {
@@ -371,73 +422,48 @@ export const ENTITY_ART = {
     }
     ctx.globalAlpha = 1;
   },
-  grinner(ctx, e, t, view) {
-    const sway = Math.sin(e.t * 6) * (Math.hypot(e.vx, e.vy) > 20 ? 2.5 : 0.6);
-    shadow(ctx, 13);
-    hitTint(ctx, e, () => {
-      ctx.save(); if (e.stun > 0) ctx.rotate(Math.sin(t * 9) * 0.12);
-      // big shoes
-      ellipse(ctx, -6 + sway * 0.4, -2, 7, 3.5, "#b0102a"); ellipse(ctx, 6 - sway * 0.4, -2, 7, 3.5, "#b0102a");
-      // baggy suit: diamonds of poison green and bruise purple
-      ctx.fillStyle = PAL.poisonDark; ctx.beginPath(); ctx.moveTo(-11, -4); ctx.quadraticCurveTo(-14, -20, -8, -30); ctx.lineTo(8, -30); ctx.quadraticCurveTo(14, -20, 11, -4); ctx.fill();
-      ctx.fillStyle = PAL.bruise;
-      for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) { const dx = -6 + j * 12 - (i % 2) * 6 + 3, dy = -8 - i * 8; ctx.beginPath(); ctx.moveTo(dx, dy - 4); ctx.lineTo(dx + 4, dy); ctx.lineTo(dx, dy + 4); ctx.lineTo(dx - 4, dy); ctx.fill(); }
-      circle(ctx, 0, -18, 1.8, PAL.bulb); circle(ctx, 0, -12, 1.8, PAL.bulb);
-      // arms reaching forward when hunting
-      const reach = e.alert > 0 && e.stun <= 0 ? 1 : 0.3;
-      ctx.strokeStyle = PAL.poisonDark; ctx.lineWidth = 4; ctx.lineCap = "round";
-      ctx.beginPath(); ctx.moveTo(-9, -26); ctx.lineTo(-13, -14 - reach * 8 + sway); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(9, -26); ctx.lineTo(13, -14 - reach * 8 - sway); ctx.stroke();
-      circle(ctx, -13, -14 - reach * 8 + sway, 3.4, "#fff"); circle(ctx, 13, -14 - reach * 8 - sway, 3.4, "#fff");
-      // ruff collar
-      for (let i = 0; i < 8; i++) { const a = (i / 8) * TAU; circle(ctx, Math.cos(a) * 9, -31 + Math.sin(a) * 3, 3.5, i % 2 ? "#fff" : PAL.candy); }
-      clownHead(ctx, 0, -42, 10, t, e);
-      if (e.stun > 0) stunStars(ctx, -56, t);
-      ctx.restore();
-    });
+  /* ---- The Unwilling (canon: tabs/clowns/). Not clowns: ordinary people in
+     their own clothes, faces whitened with grease, a second wide red mouth
+     painted over a jaw that is fixed open. ---- */
+  unwilling(ctx, e, t) {
+    const looks = [["#3a2a4a", "#1c1622", "#5a4636"], ["#2f4a32", "#1a221a", "#2a1c14"], ["#5a3a28", "#2a1c14", "#9c8f78"], ["#4a1a22", "#1c1014", "#c9b48c"]];
+    const [coat, legs, hair] = looks[e.id % looks.length];
+    figure(ctx, e, t, { coat, legs, hair, h: 1 });
   },
-  stilt(ctx, e, t) {
-    const stride = Math.sin(e.t * 7) * (Math.hypot(e.vx, e.vy) > 20 ? 5 : 0.5);
-    shadow(ctx, 16, 5);
-    hitTint(ctx, e, () => {
-      ctx.save(); if (e.stun > 0) ctx.rotate(Math.sin(t * 6) * 0.18);
-      // stilts striped
-      for (const [sx, off] of [[-5, stride], [5, -stride]]) {
-        for (let i = 0; i < 6; i++) { ctx.fillStyle = i % 2 ? "#f2e6c8" : PAL.candy; ctx.fillRect(sx - 2 + off * (i / 6), -6 - i * 7, 4, 7); }
-      }
-      // long coat
-      ctx.fillStyle = PAL.bruiseDark; ctx.beginPath(); ctx.moveTo(-10, -42); ctx.lineTo(10, -42); ctx.lineTo(7, -68); ctx.lineTo(-7, -68); ctx.fill();
-      ctx.fillStyle = PAL.bulb; for (let i = 0; i < 3; i++) circle(ctx, 0, -48 - i * 6, 1.5, PAL.bulb);
-      ctx.strokeStyle = PAL.bruiseDark; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-7, -64); ctx.lineTo(-16, -48 + stride); ctx.moveTo(7, -64); ctx.lineTo(16, -48 - stride); ctx.stroke();
-      for (let i = 0; i < 6; i++) { const a = (i / 6) * TAU; circle(ctx, Math.cos(a) * 7, -69 + Math.sin(a) * 2.5, 3, i % 2 ? PAL.poison : "#fff"); }
-      // tiny top hat
-      clownHead(ctx, 0, -78, 8, t, e, { hair: PAL.poison, grin: 0.85 });
-      ctx.fillStyle = "#111"; ctx.fillRect(-6, -96, 12, 9); ctx.fillRect(-9, -88, 18, 2);
-      ctx.fillStyle = PAL.candy; ctx.fillRect(-6, -90, 12, 2);
-      if (e.stun > 0) stunStars(ctx, -100, t);
-      ctx.restore();
-    });
+  tobias(ctx, e, t) {
+    figure(ctx, e, t, { coat: "#7a2a22", legs: "#2c3f5e", hair: "#8a8a86", h: 1.18, width: 1.15, r: 10.5,
+      over(ctx, k) { // overalls bib with two white handprints wiped on it
+        ctx.fillStyle = "#34507a"; ctx.fillRect(-6, -27 * k, 12, 14 * k);
+        ctx.fillStyle = "#c9b48c"; ctx.fillRect(-6, -27 * k, 2, 2); ctx.fillRect(4, -27 * k, 2, 2);
+        ctx.fillStyle = "rgba(255,255,255,.85)";
+        for (const sx of [-2.6, 2.6]) { ctx.beginPath(); ctx.ellipse(sx, -19 * k, 2.2, 2.8, sx * 0.1, 0, TAU); ctx.fill(); for (let i = 0; i < 4; i++) ctx.fillRect(sx - 2 + i * 1.2, -24.5 * k, 0.8, 2.6); }
+      } });
   },
-  mime(ctx, e, t) {
-    shadow(ctx, 11);
+  sam(ctx, e, t) {
+    const lean = Math.hypot(e.vx, e.vy) > 60 ? 0.18 * Math.sign(Math.cos(e.face) || 1) : 0;
+    ctx.save(); ctx.rotate(lean);
+    figure(ctx, e, t, { coat: "#4a5230", legs: "#3a3f26", hair: "#2a1c14", h: 1.08, crop: true,
+      over(ctx, k) { // dog tags on a chain
+        ctx.strokeStyle = "#9c9c9c"; ctx.lineWidth = 0.6; ctx.beginPath(); ctx.moveTo(-3, -30 * k); ctx.lineTo(0, -22 * k); ctx.lineTo(3, -30 * k); ctx.stroke();
+        ctx.fillStyle = "#d8d8d0"; ctx.fillRect(-1.6, -22.5 * k, 2, 3); ctx.fillRect(0.2, -21.8 * k, 2, 3);
+      },
+      hand(ctx) { // a claw hammer
+        ctx.fillStyle = "#5a3a20"; ctx.fillRect(-0.8, -1, 1.6, 9); ctx.fillStyle = "#777"; ctx.fillRect(-3, 7, 6, 2.4);
+      } });
+    ctx.restore();
+  },
+  lettie(ctx, e, t) {
     const moving = !e.frozen && Math.hypot(e.vx, e.vy) > 20;
-    hitTint(ctx, e, () => {
-      ctx.save(); if (e.stun > 0) ctx.rotate(Math.sin(t * 9) * 0.12);
-      if (moving) ctx.globalAlpha = 0.75;
-      ctx.fillStyle = "#0b0b0e"; ctx.fillRect(-5, -10, 4, 10); ctx.fillRect(1, -10, 4, 10);
-      for (let i = 0; i < 5; i++) { ctx.fillStyle = i % 2 ? "#0b0b0e" : "#f2f2f2"; ctx.fillRect(-8, -12 - i * 3.6, 16, 3.6); }
-      // arms: frozen in a pose (pressing on an invisible wall)
-      ctx.strokeStyle = "#f2f2f2"; ctx.lineWidth = 3; ctx.lineCap = "round";
-      ctx.beginPath(); ctx.moveTo(-7, -26); ctx.lineTo(e.frozen ? -12 : -10, e.frozen ? -38 : -18); ctx.moveTo(7, -26); ctx.lineTo(e.frozen ? 12 : 10, e.frozen ? -38 : -18); ctx.stroke();
-      circle(ctx, e.frozen ? -12 : -10, e.frozen ? -39 : -17, 3, "#fff"); circle(ctx, e.frozen ? 12 : 10, e.frozen ? -39 : -17, 3, "#fff");
-      // face: white, black teardrops, a thin red line mouth
-      ctx.beginPath(); ctx.ellipse(0, -36, 7.5, 9, 0, 0, TAU); ctx.fillStyle = "#f7f5f0"; ctx.fill();
-      ctx.fillStyle = "#000"; for (const sx of [-1, 1]) { ctx.beginPath(); ctx.ellipse(sx * 3, -38, 1.6, 2.4, 0, 0, TAU); ctx.fill(); ctx.beginPath(); ctx.moveTo(sx * 3 - 1, -35); ctx.lineTo(sx * 3, -31); ctx.lineTo(sx * 3 + 1, -35); ctx.fill(); }
-      ctx.strokeStyle = PAL.candy; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(-3, -31); ctx.quadraticCurveTo(0, e.frozen ? -30 : -28, 3, -31); ctx.stroke();
-      ctx.fillStyle = "#0b0b0e"; ctx.beginPath(); ctx.ellipse(1, -45, 8, 3, -0.2, 0, TAU); ctx.fill(); circle(ctx, 4, -47, 1.5, "#0b0b0e");
-      if (e.stun > 0) stunStars(ctx, -52, t);
-      ctx.restore();
-    });
+    if (moving) ctx.globalAlpha = 0.72;
+    figure(ctx, e, t, { coat: "#3a1a3a", legs: "#3a1a3a", hair: "#4a2a18", h: 1.02, dress: true, bun: true, chalk: true,
+      pose: e.frozen ? "point" : "reach" });
+    ctx.globalAlpha = 1;
+  },
+  eli(ctx, e, t) {
+    const skip = Math.abs(Math.sin(e.t * 9)) * (Math.hypot(e.vx, e.vy) > 20 ? 5 : 0.5);
+    ctx.save(); ctx.translate(0, -skip); ctx.scale(0.72, 0.72);
+    figure(ctx, e, t, { coat: "#c9b48c", stripes: "#6b2a8f", legs: "#34507a", hair: "#b8862b", h: 0.95, barefoot: true, cowlick: true, r: 11 });
+    ctx.restore();
   },
   rabbit(ctx, e, t) {
     const air = Math.max(0, Math.hypot(e.vx, e.vy) - 40) / 400;
@@ -867,11 +893,11 @@ export function renderTitle(ctx, W, H, t, view) {
     const g = ctx.createLinearGradient(0, y - 40, 0, y + 40); g.addColorStop(0, "rgba(90,70,80,0)"); g.addColorStop(0.5, "rgba(90,70,80,.12)"); g.addColorStop(1, "rgba(90,70,80,0)");
     ctx.fillStyle = g; ctx.fillRect(0, y - 40, W, 80);
   }
-  // a few Players at the treeline, standing very still
+  // a few of the Unwilling at the treeline, standing very still
   for (let i = 0; i < 4; i++) {
     const x = W * (0.08 + i * 0.27) + (i % 2) * 30, y = H * 0.93;
     ctx.save(); ctx.translate(x, y); ctx.scale(0.9, 0.9); ctx.globalAlpha = 0.55;
-    ENTITY_ART.grinner(ctx, { t: 0, vx: 0, vy: 0, alert: (Math.sin(t * 0.5 + i * 2) > 0.6) ? 1 : 0, stun: 0, hitFlash: 0 }, t, view);
+    ENTITY_ART.unwilling(ctx, { id: i, t: 0, vx: 0, vy: 0, alert: (Math.sin(t * 0.5 + i * 2) > 0.6) ? 1 : 0, stun: 0, hitFlash: 0 }, t, view);
     ctx.restore();
   }
   ctx.globalAlpha = 1;
@@ -884,7 +910,7 @@ function vignette(ctx, W, H, d) {
   ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
 }
 
-/* The lose screen: the guest's face, slowly painted into a Player's. k: 0..1 */
+/* The lose screen: the guest's face, slowly painted into one of the Unwilling. k: 0..1 */
 export function renderCaught(ctx, W, H, t, view, cause) {
   ctx.setTransform(view.dpr, 0, 0, view.dpr, 0, 0);
   ctx.fillStyle = "#0a0306"; ctx.fillRect(0, 0, W, H);
@@ -993,5 +1019,5 @@ export function paintIcon(canvas, id, cssSize = 40) {
   c.clearRect(-cssSize, -cssSize, cssSize * 2, cssSize * 2);
   if (ICONS[id]) ICONS[id](c, cssSize * 0.85, 0);
   else if (ENTITY_ART[id]) { c.translate(0, cssSize * 0.36); const e = { t: 0, vx: 0, vy: 0, stun: 0, hitFlash: 0, alert: 1, face: 0, phase: 0, bob: 0, spin: 0, id: 1, ang: -0.6, age: 0, r: 10 };
-    const sc = id === "stilt" ? 0.32 : id === "teacup" ? 0.55 : id === "horse" ? 0.45 : 0.65; c.scale(sc, sc); ENTITY_ART[id](c, e, 0, {}); }
+    const sc = id === "eli" ? 0.8 : id === "teacup" ? 0.55 : id === "horse" ? 0.45 : 0.65; c.scale(sc, sc); ENTITY_ART[id](c, e, 0, {}); }
 }

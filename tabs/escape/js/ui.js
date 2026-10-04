@@ -107,7 +107,7 @@ export function createUI(root, H) {
         <button class="btn js-howto">How to Survive</button>
         ${soundBtn()}
       </div>
-      <p class="whisper">The Players are kind. They only want you to stay.</p>`;
+      <p class="whisper">Don't call them clowns. Clowns choose it.</p>`;
     el.querySelector(".js-start").addEventListener("click", () => H.onStart());
     return el;
   }
@@ -126,22 +126,22 @@ export function createUI(root, H) {
             <ul class="keys">
               <li><kbd>WASD</kbd>/<kbd>Arrows</kbd> move</li>
               <li><kbd>Space</kbd>/<kbd>J</kbd> strike with held weapon</li>
-              <li><kbd>Shift</kbd>/<kbd>K</kbd> dash (slip past a Player)</li>
+              <li><kbd>Shift</kbd>/<kbd>K</kbd> dash (slip past grasping hands)</li>
               <li><kbd>Q</kbd>/<kbd>E</kbd> or <kbd>1</kbd>-<kbd>3</kbd> change weapon</li>
               <li><kbd>Esc</kbd>/<kbd>P</kbd> pause &nbsp; <kbd>M</kbd> sound</li>
               <li>On a phone: left thumb moves, right thumb strikes.</li>
             </ul>
             <h3>Choose your way</h3>
             <p>Between zones you pick the next stretch of carnival. Short routes are watched. Long routes have more to carry, but every minute you linger, another tent flap opens.</p>
-            <p>The <b>Players</b> cannot be killed. Strike them and they reel; then run. <b>Health</b> runs out when they catch you. <b>Sanity</b> drains near them, in the silence, and under the light. Lose either and you stay. Forever. Smiling.</p>
-            <p>Follow the green arrow to the exit. Watch the <b>Dread</b> faces: they light up as the Players close in.</p>
+            <p>The <b>Unwilling</b> were people once: the ones who stayed home when the light came. They cannot be killed. Strike them and they reel; then run. <b>Health</b> runs out when they catch you. <b>Sanity</b> drains near them, in the silence, and under the light. Lose either and you stay. Forever. Smiling.</p>
+            <p>Follow the green arrow to the exit. Watch the <b>Dread</b> faces: they light up as the Unwilling close in.</p>
           </div>
           <div>
             <h3>Carry</h3><ul class="lore">${weapons}</ul>
           </div>
           <div>
-            <h3>The Players</h3><ul class="lore">${foes}</ul>
-            <h3>The Attractions</h3><ul class="lore">${hz}<li data-ico="mirror"><b>Funhouse Mirror</b><br>Touch one and your left becomes your right.</li><li><b>Silence</b><br>Grey ground where the bugs are dead. In silence, every Player hears you.</li></ul>
+            <h3>The Unwilling</h3><ul class="lore">${foes}</ul>
+            <h3>The Attractions</h3><ul class="lore">${hz}<li data-ico="mirror"><b>Funhouse Mirror</b><br>Touch one and your left becomes your right.</li><li><b>Silence</b><br>Grey ground where the bugs are dead. In silence, every one of the Unwilling hears you.</li></ul>
           </div>
         </div>
         <div class="menu"><button class="btn btn-primary js-back">${data && data.back === "pause" ? "Back" : "Back"}</button></div>
@@ -178,7 +178,7 @@ export function createUI(root, H) {
         <span class="c-blurb">${esc(s.blurb)}</span>
         <span class="c-sec">Loot</span><span class="c-icons loot"></span>
         <span class="c-sec">Hazards</span><span class="c-icons haz"></span>
-        <span class="c-sec">Players</span><span class="c-icons foes"></span>
+        <span class="c-sec">The Unwilling</span><span class="c-icons foes"></span>
         <span class="c-go">${ROUTE[tier].length > 1 ? "Go this way" : "Enter"}</span>`;
       const add = (sel, id, n, label) => { const w = h("span", "ci"); w.title = label; w.appendChild(icon(id, 26)); if (n > 1) w.appendChild(h("b", "", "×" + n)); card.querySelector(sel).appendChild(w); };
       for (const [k, n] of Object.entries(s.loot)) add(".loot", k, n, (WEAPONS[k] || ITEMS[k]).name);
@@ -208,7 +208,7 @@ export function createUI(root, H) {
     return el;
   }
 
-  const statsHtml = (run) => `<dl class="stats"><div><dt>Time</dt><dd>${fmtTime(run.time)}</dd></div><div><dt>Players repelled</dt><dd>${run.repelled}</dd></div><div><dt>Zones</dt><dd>${run.path.length}</dd></div><div><dt>Wounds</dt><dd>${run.hurtCount}</dd></div></dl>`;
+  const statsHtml = (run) => `<dl class="stats"><div><dt>Time</dt><dd>${fmtTime(run.time)}</dd></div><div><dt>Unwilling repelled</dt><dd>${run.repelled}</dd></div><div><dt>Zones</dt><dd>${run.path.length}</dd></div><div><dt>Wounds</dt><dd>${run.hurtCount}</dd></div></dl>`;
 
   function lostScreen(data) {
     const el = h("section", "screen screen-lost");

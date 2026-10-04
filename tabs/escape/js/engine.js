@@ -438,7 +438,7 @@ export function update(game, dt) {
   if (nowSilent !== game.silence) {
     game.silence = nowSilent;
     game.events.push({ type: nowSilent ? "silenceEnter" : "silenceExit", x: p.x, y: p.y });
-    if (nowSilent) api.toast("The bugs stop. Every Player hears you now.");
+    if (nowSilent) api.toast("The bugs stop. Every one of the Unwilling hears you now.");
   }
   if (game.silence) api.sanity(-PLAYER.silenceDrain * dt);
   const globalAlert = game.silence || api.hasStatus("marked");
@@ -459,6 +459,7 @@ export function update(game, dt) {
           api.shove(e.x, e.y, 420);
           e.stun = 0.8; const dd = d || 1; e.vx = ((e.x - p.x) / dd) * 160; e.vy = ((e.y - p.y) / dd) * 160;
           game.events.push({ type: "grab", x: e.x, y: e.y, enemy: e.type });
+          if (e.def.onCatch) e.def.onCatch(e, api);
         }
       }
     } else if (e.cat === "obstacle") {
