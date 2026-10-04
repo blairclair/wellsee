@@ -7,9 +7,23 @@ RUSTY.panel({
   balloons: [],
   draw: function (k, R) {
     var P = R.P, INK = R.INK, s = "";
-    s += '<rect width="400" height="600" fill="#c9b98f"/>';
+    s += '<rect width="400" height="600" fill="#cdbd92"/>';
+    /* glazed-tile wainscot to child height, painted block above */
+    s += P("M0,300 H400 V450 H0Z", "#7f9c8a", INK, 2.5);
+    var wt = ""; for (var ty = 330; ty < 450; ty += 30) wt += "M0," + ty + " H400 "; for (var tx = 0; tx < 400; tx += 40) wt += "M" + tx + ",300 V450 ";
+    s += P(wt, "none", "#5f7a6a", 1.6) + P("M0,296 H400 V304 H0Z", "#4f6a5a", INK, 2);
     s += '<rect y="470" width="400" height="130" fill="#a8987a"/>' + P("M0,470 H400", "none", INK, 3);
+    s += P("M0,500 L60,470 M120,600 L200,470 M300,600 L330,470", "none", "#8f8064", 2);
     s += P("M0,450 H400 V470 H0Z", "#6a5a40", INK, 2);
+    /* late sun through the classroom door window, a slanted bar across the wall */
+    s += P("M40,0 L170,0 L330,470 L200,470Z", "#fff1c0", null, 0, 'opacity=".28"');
+    /* kids' coat hooks, labelled, at their height */
+    [["MAYA", 18], ["LEO", 96]].forEach(function (h) {
+      s += '<rect x="' + (h[1] - 2) + '" y="262" width="56" height="18" fill="#efe9da" stroke="' + INK + '" stroke-width="1.5"/>' +
+        '<text x="' + (h[1] + 26) + '" y="276" text-anchor="middle" font-family="Patrick Hand, sans-serif" font-size="14" fill="#a3171c">' + h[0] + "</text>" +
+        P("M" + (h[1] + 26) + ",284 v14 c0,8 10,8 10,0", "none", INK, 5) + P("M" + (h[1] + 26) + ",284 v14 c0,8 10,8 10,0", "none", "#b8b1a0", 2.5);
+    });
+    s += P("M106,298 C92,300 86,330 90,350 C94,368 130,370 136,350 C140,330 134,300 120,298Z", "#5a3a8a", INK, 3) + P("M98,320 H130 V340 H98Z", "#7a5aaa", INK, 2);   /* backpack on LEO's hook */
     /* corkboard */
     s += P("M150,90 H392 V380 H150Z", "#b07a46", INK, 5);
     s += R.tone(k, "M150,90 H392 V380 H150Z", .3, true);
@@ -31,7 +45,10 @@ RUSTY.panel({
     s += P("M20,370 L40,346 H124 L140,370Z", "#8a6238", INK, 3);
     s += P("M30,384 h104 v26 h-104Z", "#efe9da", INK, 2);
     s += '<text x="82" y="403" text-anchor="middle" font-family="Patrick Hand, sans-serif" font-size="17" font-weight="700" fill="' + INK + '">LOST &amp; FOUND</text>';
-    s += P("M46,352 C50,320 80,318 84,346Z", "#3d6a9a", INK, 3) + P("M90,350 L100,320 L120,328 L112,352Z", "#e3c03a", INK, 3);
+    s += P("M36,356 C36,320 86,318 88,354Z", "#3d6a9a", INK, 3) + P("M34,348 H90 V360 H34Z", "#2d5a8a", INK, 2.5) + P("M44,348 v12 M54,348 v12 M64,348 v12 M74,348 v12", "none", "#1d3a5a", 1.5) +
+      '<circle cx="62" cy="318" r="8" fill="#efe9da" stroke="' + INK + '" stroke-width="2"/>';                         /* knit hat with pompom */
+    s += P("M98,354 L102,316 H118 L116,340 L134,342 C138,348 136,356 130,358Z", "#e3c03a", INK, 3) + P("M100,322 h16", "none", INK, 2);   /* rain boot */
+    s += P("M140,372 C152,380 156,400 148,420 L138,416 C144,400 142,388 134,380Z", "#c0392b", INK, 2.5);                 /* sweater sleeve over the edge */
     /* Rusty kneeling */
     s += '<ellipse cx="190" cy="580" rx="110" ry="12" fill="#5a4a30" opacity=".4"/>';
     s += R.person(k, { x: 190, y: 578, s: .98, pose: "kneel", outfit: "work", expr: "tender", turn: .35, light: 1, look: 1, headTilt: -8 });
