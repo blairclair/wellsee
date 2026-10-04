@@ -52,3 +52,12 @@ rebases onto `origin/main`, auto-resolves `assets/tabs.js` conflicts by slug
 push cancels a pending run; the script follows the run that superseded it). Any other
 rebase conflict aborts with the file list: fix by hand and rerun. Never force-push.
 Then confirm your page's live URL returns 200 and renders.
+
+## Questions
+
+Agents working on this site report to the orchestrating session. If you hit a question
+you can't settle yourself (design direction, scope, a trade-off the brief doesn't cover,
+anything blocking), send it with `SendMessage` to `"main"` along with your recommended
+answer. Keep working on whatever it doesn't block; the reply arrives at your next tool
+round. If you'd be blocked before a reply comes, go with your recommendation and flag it
+in your final report. Don't ask what you can verify in the repo.
