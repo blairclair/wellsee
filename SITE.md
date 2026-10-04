@@ -40,7 +40,12 @@ tabs/<slug>/          one directory per tab, fully owned by that tab
   `tabs/<slug>/assets/CREDITS.md`.
 - Must work at phone width with no horizontal scroll; respect `prefers-reduced-motion`.
 
-## Deploying (do this as soon as your work is done)
+## Deploying (after every targeted change)
+
+Deploy after each self-contained change rather than saving everything for one deploy
+at the end: one enemy redesigned, one bug fixed, one panel redrawn, one chapter
+written. Before each deploy, run your tests. Each deploy must leave the live site
+working, so don't ship half-finished work or make an unfinished feature reachable.
 
 ```sh
 scripts/deploy.sh "<tab>: <what>"
